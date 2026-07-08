@@ -296,6 +296,30 @@ ipcMain.handle('mc:versions', async () => {
   };
 });
 
+// Curated version list for profile creation (Lunar-style): only the final
+// update of each version line, nothing older than 1.7. Each entry says which
+// loaders support it: Vanilla + Forge everywhere, Fabric from 1.16 up.
+ipcMain.handle('mc:supportedVersions', async () => {
+  const manifest = await getVersionManifest();
+  const lines = new Map(); // line key -> newest release id (manifest is newest-first)
+  for (const v of manifest.versions) {
+    if (v.type !== 'release') continue;
+    const parts = v.id.split('.');
+    const line = v.id.startsWith('1.') ? `1.${parts[1]}` : parts[0];
+    if (!lines.has(line)) lines.set(line, v.id);
+  }
+  const out = [];
+  for (const [line, id] of lines) {
+    const legacy = line.startsWith('1.');
+    const minor = legacy ? parseInt(line.split('.')[1], 10) || 0 : null;
+    if (legacy && minor < 7) continue; // 1.7 is the launcher's floor
+    const loaders = ['vanilla', 'forge'];
+    if (!legacy || minor >= 16) loaders.push('fabric');
+    out.push({ id, line, loaders });
+  }
+  return { latest: manifest.latest.release, versions: out };
+});
+
 ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
   if (!token) throw new Error('Not signed in');
   if (gameRunning) throw new Error('Game is already running');
@@ -372,7 +396,9 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
     });
     launcher.on('progress', (p) => {
       const percent = p.total ? Math.round((p.task / p.total) * 100) : 0;
-      send('launch:status', { stage: 'download', percent, message: `Downloading ${p.type}... ${percent}%` });
+      // MLC re-verifies every file each launch; existing files are skipped,
+      // so after the first launch this phase is a check, not a download.
+      send('launch:status', { stage: 'download', percent, message: `Checking ${p.type}... ${percent}%` });
     });
     launcher.on('data', () => {
       if (!started) {
@@ -406,6 +432,8 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
 
 async function ensureProfiles() {
   let data = readJson(profilesFile(), null);
+  let dirty = false;
+
   if (!data || !Array.isArray(data.profiles) || !data.profiles.length) {
     const s = readJson(settingsFile(), {});
     let version = s.lastVersion;
@@ -418,6 +446,7 @@ async function ensureProfiles() {
     }
     const profile = { id: newId(), name: 'Default', version, loader: s.lastLoader || 'vanilla' };
     data = { profiles: [profile] };
+    dirty = true;
 
     // Migrate any mods installed before profiles existed into the default
     // profile, so nothing the user downloaded disappears.
@@ -431,9 +460,61 @@ async function ensureProfiles() {
         }
       }
     }
-    writeJson(profilesFile(), data);
   }
+
+  if (!data.premadeSeeded) {
+    await seedPremadeProfiles(data);
+    data.premadeSeeded = true;
+    dirty = true;
+  }
+
+  if (dirty) writeJson(profilesFile(), data);
   return data;
+}
+
+// Lunar-style starter profiles, created once on first run.
+async function seedPremadeProfiles(data) {
+  let latest = '26.2';
+  try {
+    latest = (await getVersionManifest()).latest.release;
+  } catch {}
+
+  const premades = [
+    { name: 'Latest Release', description: `The newest Minecraft (${latest}) on Fabric`, version: latest, loader: 'fabric' },
+    { name: '1.16.5', description: 'The Nether Update on Fabric', version: '1.16.5', loader: 'fabric' },
+    { name: '1.12.2', description: 'The modding classic on Forge — OptiFine included', version: '1.12.2', loader: 'forge', optifine: true },
+    { name: '1.8.9', description: 'The PvP classic on Forge — OptiFine included', version: '1.8.9', loader: 'forge', optifine: true }
+  ];
+
+  for (const pm of premades) {
+    if (data.profiles.some((p) => p.name === pm.name)) continue;
+    const profile = {
+      id: newId(),
+      name: pm.name,
+      description: pm.description,
+      version: pm.version,
+      loader: pm.loader,
+      premade: true
+    };
+    data.profiles.push(profile);
+    if (pm.optifine) {
+      // best-effort, in the background — the profile works without it
+      installOptiFine(profile).catch((e) => console.warn('[optifine]', pm.version, e.message));
+    }
+  }
+}
+
+// OptiFine has no official API; BMCLAPI mirrors its builds.
+async function installOptiFine(profile) {
+  const list = await fetchJson(`https://bmclapi2.bangbang93.com/optifine/${profile.version}`);
+  const stable = list.filter((o) => o.filename && !o.filename.startsWith('preview'));
+  const pick = (stable.length ? stable : list)[Math.max(0, (stable.length ? stable : list).length - 1)];
+  if (!pick) throw new Error('no OptiFine builds found');
+  const dest = path.join(profileModsDir(profile.id), pick.filename);
+  if (fs.existsSync(dest)) return;
+  await fsp.mkdir(path.dirname(dest), { recursive: true });
+  await downloadFile(`https://bmclapi2.bangbang93.com/optifine/${profile.version}/${pick.type}/${pick.patch}`, dest);
+  console.log('[optifine] installed', pick.filename, 'into', profile.name);
 }
 
 function saveProfiles(data) {
@@ -457,12 +538,13 @@ async function syncProfileMods(profile) {
 
 ipcMain.handle('profiles:list', async () => ensureProfiles());
 
-ipcMain.handle('profiles:create', async (_e, { name, version, loader }) => {
+ipcMain.handle('profiles:create', async (_e, { name, description, version, loader }) => {
   if (!version) throw new Error('Pick a Minecraft version');
   const data = await ensureProfiles();
   const profile = {
     id: newId(),
     name: (name || '').trim() || `Profile ${data.profiles.length + 1}`,
+    description: (description || '').trim(),
     version,
     loader: loader || 'vanilla'
   };

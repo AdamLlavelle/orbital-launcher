@@ -131,6 +131,7 @@
             <span id="detail-badge" class="loader-badge"></span>
             <span class="context-chip" id="detail-version"></span>
           </div>
+          <p id="detail-desc" class="detail-desc hidden"></p>
           <div class="detail-actions">
             <button id="detail-play" class="accent-button play-green">&#9654;&nbsp; Play</button>
             <button id="detail-browse" class="accent-button">Browse Mods</button>
@@ -192,23 +193,42 @@
     </main>
   </div>
 
-  <!-- New profile modal -->
+  <!-- New profile wizard -->
   <div id="modal-overlay" class="modal-overlay hidden">
-    <div class="modal">
-      <h3>New Profile</h3>
-      <label class="modal-label">Name</label>
-      <input id="np-name" type="text" placeholder="e.g. Fabric 26.2, Old school PvP..." />
-      <label class="modal-label">Minecraft version</label>
-      <select id="np-version" class="version-select"></select>
-      <label class="modal-label">Mod loader</label>
-      <div class="loader-pills" id="np-loaders">
-        <button class="pill active" data-loader="vanilla">Vanilla</button>
-        <button class="pill" data-loader="fabric">Fabric</button>
-        <button class="pill" data-loader="forge" disabled title="Forge is temporarily disabled — coming back soon">Forge</button>
+    <div class="modal wizard">
+      <div class="wizard-head">
+        <h3 id="np-title">New Profile</h3>
+        <div class="wizard-steps">
+          <span class="step-dot active" id="step-dot-1">1</span>
+          <span class="step-line"></span>
+          <span class="step-dot" id="step-dot-2">2</span>
+        </div>
       </div>
+
+      <div id="np-step-1">
+        <label class="modal-label">Name</label>
+        <input id="np-name" type="text" placeholder="My awesome profile" />
+        <label class="modal-label">Description <span class="optional-hint">(optional)</span></label>
+        <textarea id="np-desc" rows="3" placeholder="What's this profile for?"></textarea>
+      </div>
+
+      <div id="np-step-2" class="hidden">
+        <label class="modal-label">Mod loader</label>
+        <div class="loader-pills" id="np-loader-pills">
+          <button class="pill" data-loader="vanilla">Vanilla</button>
+          <button class="pill active" data-loader="fabric">Fabric</button>
+          <button class="pill" data-loader="forge">Forge</button>
+        </div>
+        <label class="modal-label">Minecraft version</label>
+        <div id="np-version-list" class="version-list"></div>
+      </div>
+
       <div class="modal-actions">
         <button id="np-cancel" class="ghost-button">Cancel</button>
-        <button id="np-create" class="accent-button">Create Profile</button>
+        <div class="actions-spacer"></div>
+        <button id="np-back" class="ghost-button hidden">Back</button>
+        <button id="np-next" class="accent-button">Next</button>
+        <button id="np-create" class="accent-button hidden">Create Profile</button>
       </div>
     </div>
   </div>

@@ -872,7 +872,99 @@ html, body {
 .modal .loader-pills { width: 100%; justify-content: space-between; }
 .modal .pill { flex: 1; text-align: center; }
 
-.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.modal-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+.actions-spacer { flex: 1; }
+
+/* ---------- New profile wizard ---------- */
+
+.wizard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.wizard-steps { display: flex; align-items: center; gap: 6px; }
+
+.step-dot {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.step-dot.active {
+  background: rgba(79, 140, 255, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.step-line { width: 18px; height: 1px; background: var(--border); }
+
+.optional-hint { color: var(--muted); font-weight: 400; text-transform: none; }
+
+.modal textarea {
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+}
+.modal textarea:focus { border-color: var(--accent); }
+
+.version-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.version-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.version-option:last-child { border-bottom: none; }
+.version-option:hover { background: var(--bg-hover); }
+.version-option.selected {
+  background: rgba(79, 140, 255, 0.12);
+  color: var(--accent);
+}
+
+.detail-desc { color: var(--muted); font-size: 13px; margin: -6px 0 14px; max-width: 640px; }
+
+.premade-tag {
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgba(79, 140, 255, 0.13);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
 
 /* ---------- Mod card actions ---------- */
 

@@ -198,6 +198,13 @@ async function renderProfilesPage() {
     badge.textContent = p.loader;
     top.append(name, badge);
 
+    if (p.premade) {
+      const starter = document.createElement('span');
+      starter.className = 'premade-tag';
+      starter.textContent = 'Starter';
+      starter.title = 'Premade profile that ships with Orbital';
+      top.appendChild(starter);
+    }
     if (p.id === state.selectedProfileId) {
       const tag = document.createElement('span');
       tag.className = 'active-tag';
@@ -208,10 +215,15 @@ async function renderProfilesPage() {
 
     const info = document.createElement('div');
     info.className = 'profile-card-info';
-    info.textContent = `Minecraft ${p.version}`;
+    const line = (mods) => {
+      const base = `Minecraft ${p.version}` + (mods === undefined ? '' : ` · ${mods} mod${mods === 1 ? '' : 's'}`);
+      return p.description ? `${p.description}\n${base}` : base;
+    };
+    info.style.whiteSpace = 'pre-line';
+    info.textContent = line();
     if (p.loader !== 'vanilla') {
       feather.listMods(p.id).then((mods) => {
-        info.textContent = `Minecraft ${p.version} · ${mods.length} mod${mods.length === 1 ? '' : 's'}`;
+        info.textContent = line(mods.length);
       });
     }
 
@@ -244,6 +256,9 @@ function openProfileDetail(profile) {
   badge.className = `loader-badge ${profile.loader}`;
   badge.textContent = profile.loader;
   $('detail-version').textContent = `Minecraft ${profile.version}`;
+  const descEl = $('detail-desc');
+  descEl.textContent = profile.description || '';
+  descEl.classList.toggle('hidden', !profile.description);
   const playBtnDetail = $('detail-play');
   playBtnDetail.disabled = profile.loader === 'forge';
   playBtnDetail.title = profile.loader === 'forge' ? 'Forge is temporarily disabled — coming back soon' : '';
@@ -275,48 +290,104 @@ $('detail-delete').onclick = async () => {
   }
 };
 
-// --- new profile modal ---
+// --- new profile wizard ---
 const modal = $('modal-overlay');
-let modalLoader = 'vanilla';
+let wizardStep = 1;
+let wizardLoader = 'fabric';  // pill selected in step 2
+let wizardVersion = null;     // version id picked in step 2
+let supportedVersions = null; // [{ id, line, loaders }]
 
-$('btn-new-profile').onclick = () => {
+function setWizardStep(step) {
+  wizardStep = step;
+  $('np-step-1').classList.toggle('hidden', step !== 1);
+  $('np-step-2').classList.toggle('hidden', step !== 2);
+  $('step-dot-1').classList.toggle('active', step === 1);
+  $('step-dot-2').classList.toggle('active', step === 2);
+  $('np-back').classList.toggle('hidden', step === 1);
+  $('np-next').classList.toggle('hidden', step === 2);
+  $('np-create').classList.toggle('hidden', step === 1);
+}
+
+$('btn-new-profile').onclick = async () => {
   $('np-name').value = '';
-  modalLoader = 'vanilla';
-  document.querySelectorAll('#np-loaders .pill').forEach((p) => {
-    p.classList.toggle('active', p.dataset.loader === 'vanilla');
-  });
-  const sel = $('np-version');
-  sel.innerHTML = '';
-  for (const v of state.versions) {
-    const opt = document.createElement('option');
-    opt.value = v;
-    opt.textContent = v === state.latestVersion ? `${v} (latest)` : v;
-    sel.appendChild(opt);
-  }
-  if (state.latestVersion) sel.value = state.latestVersion;
+  $('np-desc').value = '';
+  wizardVersion = null;
+  wizardLoader = 'fabric';
+  setWizardStep(1);
   modal.classList.remove('hidden');
   $('np-name').focus();
+
+  if (!supportedVersions) {
+    try {
+      const { versions } = await feather.getSupportedVersions();
+      supportedVersions = versions;
+    } catch {
+      supportedVersions = [];
+      toast('Could not load the version list — check your connection.', 'error');
+    }
+  }
+  renderWizardLoaderPills();
+  renderVersionOptions();
 };
 
-document.querySelectorAll('#np-loaders .pill').forEach((pill) => {
+function renderWizardLoaderPills() {
+  document.querySelectorAll('#np-loader-pills .pill').forEach((p) => {
+    p.classList.toggle('active', p.dataset.loader === wizardLoader);
+  });
+}
+
+document.querySelectorAll('#np-loader-pills .pill').forEach((pill) => {
   pill.onclick = () => {
-    document.querySelectorAll('#np-loaders .pill').forEach((p) => p.classList.remove('active'));
-    pill.classList.add('active');
-    modalLoader = pill.dataset.loader;
+    wizardLoader = pill.dataset.loader;
+    wizardVersion = null; // the old pick may not exist under the new loader
+    renderWizardLoaderPills();
+    renderVersionOptions();
   };
 });
 
+function renderVersionOptions() {
+  const list = $('np-version-list');
+  list.innerHTML = '';
+  const rows = (supportedVersions || []).filter((v) => v.loaders.includes(wizardLoader));
+  if (!rows.length) {
+    list.innerHTML = '<p class="empty-note" style="padding:12px">No supported versions for this loader.</p>';
+    return;
+  }
+  for (const v of rows) {
+    const row = document.createElement('button');
+    row.className = 'version-option' + (wizardVersion === v.id ? ' selected' : '');
+    const label = document.createElement('span');
+    label.textContent = v.id;
+    const badge = document.createElement('span');
+    badge.className = `loader-badge ${wizardLoader}`;
+    badge.textContent = wizardLoader;
+    row.append(label, badge);
+    row.onclick = () => {
+      wizardVersion = v.id;
+      renderVersionOptions();
+    };
+    list.appendChild(row);
+  }
+}
+
+$('np-next').onclick = () => setWizardStep(2);
+$('np-back').onclick = () => setWizardStep(1);
 $('np-cancel').onclick = () => modal.classList.add('hidden');
 modal.onclick = (e) => {
   if (e.target === modal) modal.classList.add('hidden');
 };
 
 $('np-create').onclick = async () => {
+  if (!wizardVersion) {
+    toast('Pick a Minecraft version first', 'error');
+    return;
+  }
   try {
     const created = await feather.createProfile({
       name: $('np-name').value,
-      version: $('np-version').value,
-      loader: modalLoader
+      description: $('np-desc').value,
+      version: wizardVersion,
+      loader: wizardLoader
     });
     modal.classList.add('hidden');
     await loadProfiles();
@@ -793,14 +864,6 @@ $('btn-open-folder').onclick = () => feather.openFolder();
   ramSlider.value = state.settings.ram;
   $('ram-value').textContent = `${state.settings.ram} GB`;
   state.selectedProfileId = state.settings.lastProfileId;
-
-  try {
-    const { latest, releases } = await feather.getVersions();
-    state.versions = releases;
-    state.latestVersion = latest;
-  } catch {
-    toast('Could not load Minecraft version list — check your internet connection.', 'error');
-  }
 
   await loadProfiles();
 
