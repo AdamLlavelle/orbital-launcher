@@ -275,7 +275,37 @@
     <div id="drawer-list" class="drawer-list"></div>
   </aside>
 
+  <!-- Skin editor -->
+  <div id="skin-overlay" class="modal-overlay hidden">
+    <div class="modal skin-modal">
+      <button class="wizard-close" id="skin-close" title="Close">&#x2715;</button>
+      <div class="skin-body">
+        <div class="skin-stage">
+          <canvas id="skin-canvas"></canvas>
+        </div>
+        <div class="skin-controls">
+          <h3>Skin Editor</h3>
+          <p class="wizard-sub" id="skin-sub">Loading your skin...</p>
+
+          <label class="modal-label">Model</label>
+          <div class="loader-pills skin-variant-pills" id="skin-variant-pills">
+            <button class="pill" data-variant="classic">Classic</button>
+            <button class="pill" data-variant="slim">Slim</button>
+          </div>
+          <p class="skin-hint">Classic = 4px arms (Steve) &middot; Slim = 3px arms (Alex)</p>
+
+          <label class="modal-label">Skin file</label>
+          <button id="skin-upload" class="accent-button">Upload New Skin...</button>
+          <p class="skin-hint">64&times;64 PNG. Applies to your real Minecraft account.</p>
+
+          <p id="skin-status" class="skin-status"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" class="toast-container"></div>
+  <script src="vendor/skinview3d.bundle.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

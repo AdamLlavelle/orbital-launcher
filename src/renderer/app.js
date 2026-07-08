@@ -62,7 +62,7 @@ document.querySelectorAll('.nav-tab').forEach((btn) => {
   btn.onclick = () => gotoPage(btn.dataset.page);
 });
 
-$('account-chip').onclick = () => gotoPage('settings');
+$('account-chip').onclick = () => openSkinEditor();
 
 // ---------- auth ----------
 function showLogin() {
@@ -898,6 +898,90 @@ ramSlider.onchange = () => {
 };
 
 $('btn-open-folder').onclick = () => feather.openFolder();
+
+// ---------- skin editor ----------
+let skinViewer = null;
+let skinVariant = 'classic';
+
+function skinStatus(msg) {
+  $('skin-status').textContent = msg || '';
+}
+
+async function openSkinEditor() {
+  if (!state.profile) return;
+  $('skin-overlay').classList.remove('hidden');
+  if (!skinViewer) {
+    skinViewer = new skinview3d.SkinViewer({
+      canvas: $('skin-canvas'),
+      width: 300,
+      height: 440
+    });
+    skinViewer.animation = new skinview3d.WalkingAnimation();
+    skinViewer.animation.speed = 0.55;
+    skinViewer.autoRotate = true;
+    skinViewer.autoRotateSpeed = 0.35;
+    skinViewer.zoom = 0.85;
+  }
+  await refreshSkin();
+}
+
+async function refreshSkin() {
+  skinStatus('');
+  $('skin-sub').textContent = 'Loading your skin...';
+  try {
+    const skin = await feather.getSkin();
+    skinVariant = skin.variant;
+    document.querySelectorAll('#skin-variant-pills .pill').forEach((p) => {
+      p.classList.toggle('active', p.dataset.variant === skinVariant);
+    });
+    if (skin.skinData) {
+      await skinViewer.loadSkin(skin.skinData, { model: skinVariant === 'slim' ? 'slim' : 'default' });
+    }
+    $('skin-sub').textContent = `${skin.name} · drag to rotate`;
+  } catch (err) {
+    $('skin-sub').textContent = 'Could not load skin';
+    toast(cleanError(err), 'error');
+  }
+}
+
+$('skin-close').onclick = () => $('skin-overlay').classList.add('hidden');
+$('skin-overlay').onclick = (e) => {
+  if (e.target === $('skin-overlay')) $('skin-overlay').classList.add('hidden');
+};
+
+document.querySelectorAll('#skin-variant-pills .pill').forEach((pill) => {
+  pill.onclick = async () => {
+    if (pill.dataset.variant === skinVariant) return;
+    skinStatus('Switching model...');
+    try {
+      await feather.setSkinVariant(pill.dataset.variant);
+      await refreshSkin();
+      skinStatus('Model updated.');
+    } catch (err) {
+      skinStatus('');
+      toast(cleanError(err), 'error');
+    }
+  };
+});
+
+$('skin-upload').onclick = async () => {
+  const file = await feather.pickSkinFile();
+  if (!file) return;
+  const btn = $('skin-upload');
+  btn.disabled = true;
+  skinStatus('Uploading skin...');
+  try {
+    await feather.uploadSkin({ filePath: file, variant: skinVariant });
+    await refreshSkin();
+    skinStatus('Skin updated! (Your in-launcher avatar may take a while to refresh.)');
+    toast('Skin uploaded to your Minecraft account', 'success');
+  } catch (err) {
+    skinStatus('');
+    toast(cleanError(err), 'error', 7000);
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 // ---------- init ----------
 (async function init() {

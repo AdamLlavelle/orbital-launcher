@@ -1199,6 +1199,52 @@ html, body {
 
 .version-row .mod-install { align-self: center; }
 
+/* ---------- Skin editor ---------- */
+
+.skin-modal {
+  position: relative;
+  width: 720px;
+  max-width: 94vw;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% -10%, rgba(79, 140, 255, 0.09), transparent),
+    var(--bg-raised);
+}
+
+.skin-body { display: flex; height: 470px; }
+
+.skin-stage {
+  width: 330px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(79, 140, 255, 0.10), transparent),
+    var(--bg);
+  border-right: 1px solid var(--border);
+}
+#skin-canvas { cursor: grab; }
+#skin-canvas:active { cursor: grabbing; }
+
+.skin-controls {
+  flex: 1;
+  min-width: 0;
+  padding: 30px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skin-controls h3 { font-size: 22px; }
+
+.skin-variant-pills { align-self: flex-start; }
+
+.skin-hint { color: var(--muted); font-size: 11.5px; }
+
+.skin-status { color: var(--muted); font-size: 12.5px; margin-top: auto; min-height: 18px; }
+
 /* ---------- Scrollbar ---------- */
 
 ::-webkit-scrollbar { width: 10px; }

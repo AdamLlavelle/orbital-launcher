@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
@@ -223,6 +223,14 @@ function createWindow() {
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
   win.setMenuBarVisibility(false);
+  win.webContents.on('console-message', (e, level, message, line, sourceId) => {
+    // Electron changed this event's shape; support both old and new forms.
+    if (e && e.message !== undefined) {
+      console.log(`[renderer:${e.level}] ${e.message} (${path.basename(e.sourceId || '')}:${e.lineNumber})`);
+    } else {
+      console.log(`[renderer:${level}] ${message} (${path.basename(sourceId || '')}:${line})`);
+    }
+  });
 }
 
 app.whenReady().then(createWindow);
@@ -284,6 +292,67 @@ ipcMain.handle('auth:restore', async () => {
 ipcMain.handle('auth:logout', async () => {
   token = null;
   await fsp.unlink(authFile()).catch(() => {});
+  return true;
+});
+
+// ---------- skins (Mojang profile API, bearer = Minecraft access token) ----------
+
+const MC_API = 'https://api.minecraftservices.com/minecraft/profile';
+
+function mcAuthHeaders() {
+  if (!token) throw new Error('Not signed in');
+  return { Authorization: `Bearer ${token.mcToken}` };
+}
+
+async function fetchSkinProfile() {
+  const res = await fetch(MC_API, { headers: mcAuthHeaders() });
+  if (!res.ok) throw new Error(`Profile fetch failed (${res.status})`);
+  const data = await res.json();
+  const active = (data.skins || []).find((s) => s.state === 'ACTIVE') || (data.skins || [])[0];
+  return { name: data.name, uuid: data.id, skinUrl: active ? active.url : null, variant: active ? active.variant.toLowerCase() : 'classic' };
+}
+
+ipcMain.handle('skin:get', async () => {
+  const profile = await fetchSkinProfile();
+  let dataUrl = null;
+  if (profile.skinUrl) {
+    // textures.minecraft.net has no CORS headers; fetch here and hand the
+    // renderer a data: URL so the 3D canvas isn't tainted.
+    const res = await fetch(profile.skinUrl);
+    if (res.ok) dataUrl = `data:image/png;base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}`;
+  }
+  return { ...profile, skinData: dataUrl };
+});
+
+ipcMain.handle('skin:pickFile', async () => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Choose a Minecraft skin',
+    filters: [{ name: 'Skin PNG', extensions: ['png'] }],
+    properties: ['openFile']
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('skin:upload', async (_e, { filePath, variant }) => {
+  const buf = await fsp.readFile(filePath);
+  if (buf.length > 24576) throw new Error('Skin file too large — must be a 64x64 (or 64x32) PNG');
+  const form = new FormData();
+  form.append('variant', variant === 'slim' ? 'slim' : 'classic');
+  form.append('file', new Blob([buf], { type: 'image/png' }), 'skin.png');
+  const res = await fetch(`${MC_API}/skins`, { method: 'POST', headers: mcAuthHeaders(), body: form });
+  if (!res.ok) throw new Error(`Skin upload failed (${res.status}): ${(await res.text()).slice(0, 120)}`);
+  return true;
+});
+
+ipcMain.handle('skin:setVariant', async (_e, variant) => {
+  const profile = await fetchSkinProfile();
+  if (!profile.skinUrl) throw new Error('No current skin to change');
+  const res = await fetch(`${MC_API}/skins`, {
+    method: 'POST',
+    headers: { ...mcAuthHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ variant: variant === 'slim' ? 'slim' : 'classic', url: profile.skinUrl })
+  });
+  if (!res.ok) throw new Error(`Variant change failed (${res.status})`);
   return true;
 });
 

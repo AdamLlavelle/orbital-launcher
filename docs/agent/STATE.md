@@ -4,7 +4,9 @@ Updated: 2026-07-09 (overwrite this file, never append; keep < 60 lines)
 ## What this is
 Electron 43 app. Source: `C:\Users\adaml\Projects\orbital-launcher`.
 Installed app: `C:\Program Files\Orbital Launcher` (NSIS one-click, perMachine).
-GitHub: https://github.com/AdamLlavelle/orbital-launcher — released: v0.3.0-beta.
+GitHub: https://github.com/AdamLlavelle/orbital-launcher — released: v0.3.1-beta
+(includes skin editor: account chip → 3D preview via bundled skinview3d in
+src/renderer/vendor, variant toggle + PNG upload via Mojang profile API).
 Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Launcher`.
 
 ## Working (verified)
@@ -28,7 +30,9 @@ Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Lau
 - Untested: legacy Forge path (1.8.9/1.12.2 premades, OptiFine in-game).
 
 ## Local-only (committed, NOT pushed — Adam gates all pushes)
-- None — v0.3.0-beta shipped 2026-07-09; local main == origin/main.
+- None — v0.3.1-beta shipped 2026-07-09; local main == origin/main.
+- Priorities from Adam: settings expansion next, then animations/fluidity,
+  then in-game client mod (possibly separate session/repo).
 
 ## Next actions
 1. Test 1.8.9 starter profile (legacy Forge + OptiFine).

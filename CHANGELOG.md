@@ -2,6 +2,14 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.3.1-beta — 2026-07-09
+
+### Added
+- **Skin editor**: click your account (top right) to open it — 3D rotating
+  preview of your current skin (drag to spin), Classic/Slim model toggle,
+  and skin PNG upload. Changes apply to your real Minecraft account via
+  Mojang's official API.
+
 ## 0.3.0-beta — 2026-07-09
 
 ### Fixed

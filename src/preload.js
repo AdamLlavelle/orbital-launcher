@@ -28,6 +28,12 @@ contextBridge.exposeInMainWorld('feather', {
   toggleMod: (opts) => ipcRenderer.invoke('mods:toggle', opts),
   removeMod: (opts) => ipcRenderer.invoke('mods:remove', opts),
 
+  // Skins
+  getSkin: () => ipcRenderer.invoke('skin:get'),
+  pickSkinFile: () => ipcRenderer.invoke('skin:pickFile'),
+  uploadSkin: (opts) => ipcRenderer.invoke('skin:upload', opts),
+  setSkinVariant: (variant) => ipcRenderer.invoke('skin:setVariant', variant),
+
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
