@@ -196,38 +196,67 @@
   <!-- New profile wizard -->
   <div id="modal-overlay" class="modal-overlay hidden">
     <div class="modal wizard">
-      <div class="wizard-head">
-        <h3 id="np-title">New Profile</h3>
-        <div class="wizard-steps">
-          <span class="step-dot active" id="step-dot-1">1</span>
-          <span class="step-line"></span>
-          <span class="step-dot" id="step-dot-2">2</span>
+      <button class="wizard-close" id="np-close" title="Close">&#x2715;</button>
+
+      <div class="wizard-body">
+        <aside class="wizard-rail">
+          <div class="rail-step active" id="rail-1">
+            <span class="rail-dot">1</span>
+            <span class="rail-label">Details</span>
+          </div>
+          <div class="rail-line"></div>
+          <div class="rail-step" id="rail-2">
+            <span class="rail-dot">2</span>
+            <span class="rail-label">Version</span>
+          </div>
+        </aside>
+
+        <div class="wizard-content">
+          <!-- Step 1: details -->
+          <div id="np-step-1" class="wizard-step">
+            <h3>Profile Details</h3>
+            <p class="wizard-sub">Give it a name — the description shows up on the profile card.</p>
+
+            <label class="modal-label">Name</label>
+            <div class="field-wrap">
+              <input id="np-name" type="text" placeholder="My awesome profile" maxlength="40" />
+              <span class="char-count" id="np-name-count">40</span>
+            </div>
+
+            <label class="modal-label">Description <span class="optional-hint">(optional)</span></label>
+            <div class="field-wrap">
+              <textarea id="np-desc" rows="4" placeholder="What's this profile for? Mods, servers, a vibe..." maxlength="140"></textarea>
+              <span class="char-count" id="np-desc-count">140</span>
+            </div>
+          </div>
+
+          <!-- Step 2: version -->
+          <div id="np-step-2" class="wizard-step hidden">
+            <h3>Select Version</h3>
+            <p class="wizard-sub">Pick a mod loader, then the Minecraft version for this profile.</p>
+
+            <div class="loader-pills wizard-pills" id="np-loader-pills">
+              <button class="pill" data-loader="vanilla">Vanilla</button>
+              <button class="pill active" data-loader="fabric">Fabric</button>
+              <button class="pill" data-loader="forge">Forge</button>
+            </div>
+
+            <div id="np-version-list" class="version-grid"></div>
+          </div>
         </div>
       </div>
 
-      <div id="np-step-1">
-        <label class="modal-label">Name</label>
-        <input id="np-name" type="text" placeholder="My awesome profile" />
-        <label class="modal-label">Description <span class="optional-hint">(optional)</span></label>
-        <textarea id="np-desc" rows="3" placeholder="What's this profile for?"></textarea>
-      </div>
-
-      <div id="np-step-2" class="hidden">
-        <label class="modal-label">Mod loader</label>
-        <div class="loader-pills" id="np-loader-pills">
-          <button class="pill" data-loader="vanilla">Vanilla</button>
-          <button class="pill active" data-loader="fabric">Fabric</button>
-          <button class="pill" data-loader="forge">Forge</button>
-        </div>
-        <label class="modal-label">Minecraft version</label>
-        <div id="np-version-list" class="version-list"></div>
-      </div>
-
-      <div class="modal-actions">
-        <button id="np-cancel" class="ghost-button">Cancel</button>
+      <div class="wizard-footer">
+        <label class="advanced-toggle hidden" id="np-advanced" title="Show every Minecraft version">
+          <span class="switch adv-switch">
+            <input type="checkbox" id="np-advanced-check" />
+            <span class="slider"></span>
+          </span>
+          <span class="adv-label">Advanced</span>
+        </label>
         <div class="actions-spacer"></div>
-        <button id="np-back" class="ghost-button hidden">Back</button>
-        <button id="np-next" class="accent-button">Next</button>
+        <button id="np-back" class="ghost-button hidden">&larr; Back</button>
+        <button id="np-next" class="accent-button">Select Version &rarr;</button>
         <button id="np-create" class="accent-button hidden">Create Profile</button>
       </div>
     </div>

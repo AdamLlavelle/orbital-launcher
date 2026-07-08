@@ -295,24 +295,46 @@ const modal = $('modal-overlay');
 let wizardStep = 1;
 let wizardLoader = 'fabric';  // pill selected in step 2
 let wizardVersion = null;     // version id picked in step 2
-let supportedVersions = null; // [{ id, line, loaders }]
+let supportedVersions = null; // curated: [{ id, line, loaders }]
+let allVersions = null;       // advanced: { vanilla: [], fabric: [], forge: [] }
+let advancedMode = false;
 
 function setWizardStep(step) {
   wizardStep = step;
   $('np-step-1').classList.toggle('hidden', step !== 1);
   $('np-step-2').classList.toggle('hidden', step !== 2);
-  $('step-dot-1').classList.toggle('active', step === 1);
-  $('step-dot-2').classList.toggle('active', step === 2);
+  const rail1 = $('rail-1');
+  rail1.classList.toggle('active', step === 1);
+  rail1.classList.toggle('done', step === 2);
+  rail1.querySelector('.rail-dot').textContent = step === 2 ? '✓' : '1';
+  $('rail-2').classList.toggle('active', step === 2);
   $('np-back').classList.toggle('hidden', step === 1);
   $('np-next').classList.toggle('hidden', step === 2);
   $('np-create').classList.toggle('hidden', step === 1);
+  $('np-advanced').classList.toggle('hidden', step !== 2);
 }
+
+$('rail-1').onclick = () => {
+  if (wizardStep === 2) setWizardStep(1); // completed step is clickable
+};
+
+// character counters on step 1
+function updateWizardPreview() {
+  $('np-name-count').textContent = 40 - $('np-name').value.length;
+  $('np-desc-count').textContent = 140 - $('np-desc').value.length;
+}
+$('np-name').addEventListener('input', updateWizardPreview);
+$('np-desc').addEventListener('input', updateWizardPreview);
 
 $('btn-new-profile').onclick = async () => {
   $('np-name').value = '';
   $('np-desc').value = '';
+  updateWizardPreview();
   wizardVersion = null;
   wizardLoader = 'fabric';
+  advancedMode = false;
+  $('np-advanced-check').checked = false;
+  $('np-advanced').classList.remove('on');
   setWizardStep(1);
   modal.classList.remove('hidden');
   $('np-name').focus();
@@ -345,10 +367,36 @@ document.querySelectorAll('#np-loader-pills .pill').forEach((pill) => {
   };
 });
 
+const advCheck = $('np-advanced-check');
+advCheck.onchange = async () => {
+  const wrap = $('np-advanced');
+  if (advCheck.checked && !allVersions) {
+    wrap.classList.add('loading');
+    advCheck.disabled = true;
+    try {
+      allVersions = await feather.getAllVersions();
+    } catch {
+      toast('Could not load the full version list — check your connection.', 'error');
+      advCheck.checked = false;
+      wrap.classList.remove('loading');
+      advCheck.disabled = false;
+      return;
+    }
+    wrap.classList.remove('loading');
+    advCheck.disabled = false;
+  }
+  advancedMode = advCheck.checked;
+  wrap.classList.toggle('on', advancedMode);
+  wizardVersion = null; // the old pick may not exist in the other list
+  renderVersionOptions();
+};
+
 function renderVersionOptions() {
   const list = $('np-version-list');
   list.innerHTML = '';
-  const rows = (supportedVersions || []).filter((v) => v.loaders.includes(wizardLoader));
+  const rows = advancedMode
+    ? ((allVersions && allVersions[wizardLoader]) || []).map((id) => ({ id, line: id }))
+    : (supportedVersions || []).filter((v) => v.loaders.includes(wizardLoader));
   if (!rows.length) {
     list.innerHTML = '<p class="empty-note" style="padding:12px">No supported versions for this loader.</p>';
     return;
@@ -356,12 +404,13 @@ function renderVersionOptions() {
   for (const v of rows) {
     const row = document.createElement('button');
     row.className = 'version-option' + (wizardVersion === v.id ? ' selected' : '');
-    const label = document.createElement('span');
-    label.textContent = v.id;
-    const badge = document.createElement('span');
-    badge.className = `loader-badge ${wizardLoader}`;
-    badge.textContent = wizardLoader;
-    row.append(label, badge);
+    const line = document.createElement('span');
+    line.className = 'vo-line';
+    line.textContent = v.line;
+    const full = document.createElement('span');
+    full.className = 'vo-id';
+    full.textContent = v.id === v.line ? ' ' : v.id;
+    row.append(line, full);
     row.onclick = () => {
       wizardVersion = v.id;
       renderVersionOptions();
@@ -372,7 +421,7 @@ function renderVersionOptions() {
 
 $('np-next').onclick = () => setWizardStep(2);
 $('np-back').onclick = () => setWizardStep(1);
-$('np-cancel').onclick = () => modal.classList.add('hidden');
+$('np-close').onclick = () => modal.classList.add('hidden');
 modal.onclick = (e) => {
   if (e.target === modal) modal.classList.add('hidden');
 };

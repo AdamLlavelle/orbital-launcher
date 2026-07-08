@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('feather', {
   // Game
   getVersions: () => ipcRenderer.invoke('mc:versions'),
   getSupportedVersions: () => ipcRenderer.invoke('mc:supportedVersions'),
+  getAllVersions: () => ipcRenderer.invoke('mc:allVersions'),
   launch: (opts) => ipcRenderer.invoke('mc:launch', opts),
   onLaunchStatus: (cb) => ipcRenderer.on('launch:status', (_e, data) => cb(data)),
   onLaunchClosed: (cb) => ipcRenderer.on('launch:closed', (_e, data) => cb(data)),

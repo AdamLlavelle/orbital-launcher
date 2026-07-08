@@ -320,6 +320,37 @@ ipcMain.handle('mc:supportedVersions', async () => {
   return { latest: manifest.latest.release, versions: out };
 });
 
+// Advanced mode: the complete catalog per loader. Vanilla = every release;
+// Fabric/Forge = releases each loader's own metadata says it supports.
+let allVersionsCache = null;
+
+ipcMain.handle('mc:allVersions', async () => {
+  if (allVersionsCache) return allVersionsCache;
+  const manifest = await getVersionManifest();
+  const releases = manifest.versions.filter((v) => v.type === 'release').map((v) => v.id);
+
+  let fabricList = [];
+  try {
+    const supported = await fabric.listSupportedVersions(); // meta.fabricmc.net
+    const set = new Set(supported.filter((v) => v.stable).map((v) => v.version));
+    fabricList = releases.filter((id) => set.has(id));
+  } catch (e) {
+    console.warn('[versions] fabric list failed:', e.message);
+  }
+
+  let forgeList = [];
+  try {
+    const supported = await forge.listSupportedVersions(); // forge maven metadata
+    const set = new Set(supported.map((v) => v.version));
+    forgeList = releases.filter((id) => set.has(id));
+  } catch (e) {
+    console.warn('[versions] forge list failed:', e.message);
+  }
+
+  allVersionsCache = { vanilla: releases, fabric: fabricList, forge: forgeList };
+  return allVersionsCache;
+});
+
 ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
   if (!token) throw new Error('Not signed in');
   if (gameRunning) throw new Error('Game is already running');
