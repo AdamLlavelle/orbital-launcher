@@ -260,8 +260,8 @@ function openProfileDetail(profile) {
   descEl.textContent = profile.description || '';
   descEl.classList.toggle('hidden', !profile.description);
   const playBtnDetail = $('detail-play');
-  playBtnDetail.disabled = profile.loader === 'forge';
-  playBtnDetail.title = profile.loader === 'forge' ? 'Forge is temporarily disabled — coming back soon' : '';
+  playBtnDetail.disabled = false;
+  playBtnDetail.title = '';
   loadInstalledMods();
 }
 
@@ -512,7 +512,7 @@ async function fetchModPage() {
   const btn = $('btn-search');
   btn.disabled = true;
   const resultsEl = $('mod-results');
-  resultsEl.innerHTML = '<p class="empty-note">Loading mods from Modrinth...</p>';
+  resultsEl.innerHTML = `<p class="empty-note">Loading mods from ${p.loader === 'forge' ? 'CurseForge' : 'Modrinth'}...</p>`;
   try {
     const { total, hits } = await feather.searchMods({
       query: $('mod-search').value.trim(),
@@ -840,10 +840,6 @@ async function launchSelected() {
     toast('Create a profile first', 'error');
     return;
   }
-  if (p.loader === 'forge') {
-    toast('Forge is temporarily disabled — coming back soon', 'error');
-    return;
-  }
   state.launching = true;
   playBtn.disabled = true;
   playLabel.textContent = 'PREPARING';
@@ -867,13 +863,9 @@ function resetPlayButton() {
   updatePlayAvailability();
 }
 
-// Forge is temporarily disabled — gray out PLAY when a Forge profile is active.
 function updatePlayAvailability() {
   if (state.launching || state.running) return;
-  const p = selectedProfile();
-  const forgeOff = p && p.loader === 'forge';
-  playBtn.disabled = forgeOff;
-  statusEl.textContent = forgeOff ? 'Forge profiles are temporarily disabled — coming back soon' : '';
+  playBtn.disabled = false;
 }
 
 feather.onLaunchStatus(({ stage, percent, message }) => {

@@ -46,7 +46,16 @@
    from `.minecraft` via "Import Old Data.bat" (safe to re-run, never
    overwrites newer). Don't reintroduce the old names.
 
-9. **Releases**: electron-builder NSIS, `perMachine`+`oneClick` → Program Files,
+9. **Modern Forge needs its installer run once per version** (1.13+/26.x):
+   MLC can't run Forge's installer processors, so the patched client jar is
+   missing → "Could not find .forge_patched_minecraft". `ensureForgeInstalled()`
+   runs `java -jar forge.jar --installClient GAME_ROOT` headlessly (needs a
+   stub launcher_profiles.json), marker: `GAME_ROOT/.forge-installed-<ver>`.
+   Combined with the installer-jar classpath strip (the 'arguments' event
+   handler), modern Forge launches. Legacy (<=1.12) skips both; 1.8.9 path
+   still untested end-to-end. VERIFIED working on 26.2 (2026-07-09).
+
+10. **Releases**: electron-builder NSIS, `perMachine`+`oneClick` → Program Files,
    UAC prompt Adam must click. Version comes from package.json (currently
    0.1.0-beta). gh CLI authed as AdamLlavelle. The initial commit message was
    history-rewritten once (filter-branch) — don't do that again now that the

@@ -23,15 +23,16 @@ Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Lau
 - Custom top-bar UI, app icon, changelog, beta versioning, agent docs system
 
 ## Gated / broken
-- Forge LAUNCH disabled in UI — JPMS crash; fix written but UNTESTED → step-01.
-  Gates: src/renderer/app.js (launchSelected guard, updatePlayAvailability,
-  openProfileDetail detail-play disable).
+- Nothing gated. FORGE WORKS (verified 26.2, 2026-07-09): UI gates removed,
+  installer-jar classpath strip + one-time `--installClient` run (GOTCHAS #9).
+- Untested: legacy Forge path (1.8.9/1.12.2 premades, OptiFine in-game).
 
 ## Local-only (committed, NOT pushed — Adam gates all pushes)
-- None — v0.2.0-beta shipped 2026-07-09; local main == origin/main.
+- Since v0.2.0-beta: Forge enablement, browse-mods source label fix.
 
 ## Next actions
-1. step-01: re-enable Forge (when Adam says go).
+1. Test 1.8.9 starter profile (legacy Forge + OptiFine).
+2. Ship 0.3.0-beta "Forge works" when Adam says so.
 
 ## File map (read only what you need)
 - src/main.js — ALL backend; `// ----------` section headers

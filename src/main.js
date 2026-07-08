@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const fsp = fs.promises;
 const crypto = require('crypto');
+const { spawn } = require('child_process');
 const { Readable } = require('stream');
 const { Client } = require('minecraft-launcher-core');
 
@@ -351,6 +352,32 @@ ipcMain.handle('mc:allVersions', async () => {
   return allVersionsCache;
 });
 
+// Modern Forge (1.13+/26.x) needs its installer processors to run once per
+// version — they generate the patched Minecraft jar that MLC can't produce
+// ("Could not find .forge_patched_minecraft" otherwise). Legacy Forge (<=1.12)
+// has no processors and no headless installer; MLC handles it directly.
+async function ensureForgeInstalled(version, installerPath, javaPath) {
+  const legacy = version.startsWith('1.') && (parseInt(version.split('.')[1], 10) || 0) <= 12;
+  if (legacy) return;
+  const marker = path.join(GAME_ROOT, `.forge-installed-${version}`);
+  if (fs.existsSync(marker)) return;
+
+  send('launch:status', { stage: 'prepare', percent: 0, message: 'Installing Forge (one-time, takes a minute)...' });
+  const stub = path.join(GAME_ROOT, 'launcher_profiles.json');
+  if (!fs.existsSync(stub)) writeJson(stub, { profiles: {} }); // installer requires it
+
+  const javaExe = javaPath.replace(/javaw\.exe$/i, 'java.exe');
+  await new Promise((resolve, reject) => {
+    const p = spawn(javaExe, ['-jar', installerPath, '--installClient', GAME_ROOT], { cwd: GAME_ROOT });
+    p.stdout.on('data', (d) => console.log('[forge-install]', String(d).trim()));
+    p.stderr.on('data', (d) => console.log('[forge-install!]', String(d).trim()));
+    p.on('error', reject);
+    p.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`Forge installer exited with code ${code}`))));
+  });
+  fs.writeFileSync(marker, 'ok');
+  console.log('[forge-install] done for', version);
+}
+
 ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
   if (!token) throw new Error('Not signed in');
   if (gameRunning) throw new Error('Game is already running');
@@ -374,6 +401,7 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
       config = await fabric.getMCLCLaunchConfig({ gameVersion: version, rootPath: GAME_ROOT });
     } else if (loader === 'forge') {
       config = await forge.getMCLCLaunchConfig({ gameVersion: version, rootPath: GAME_ROOT });
+      await ensureForgeInstalled(version, config.forge, javaPath);
     } else if (loader === 'quilt') {
       config = await quilt.getMCLCLaunchConfig({ gameVersion: version, rootPath: GAME_ROOT });
     } else {
