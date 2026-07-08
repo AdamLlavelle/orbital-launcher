@@ -21,8 +21,13 @@ profiles, and built-in mod downloads from Modrinth and CurseForge.
 
 ## Installing (users)
 
-Run `dist/Orbital Launcher Setup 1.0.0.exe`. One click installs it to
-Program Files with a desktop shortcut. That's it.
+Download the latest `Orbital Launcher Setup` exe from the
+[Releases page](https://github.com/AdamLlavelle/orbital-launcher/releases)
+and run it. One click installs it to Program Files with a desktop shortcut.
+
+> Orbital Launcher is currently in **beta** — it works, but it's far from
+> done. See [CHANGELOG.md](CHANGELOG.md) for what's in and what's known to
+> be broken.
 
 ## Developing
 
