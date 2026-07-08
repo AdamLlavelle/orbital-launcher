@@ -4,7 +4,7 @@ Updated: 2026-07-09 (overwrite this file, never append; keep < 60 lines)
 ## What this is
 Electron 43 app. Source: `C:\Users\adaml\Projects\orbital-launcher`.
 Installed app: `C:\Program Files\Orbital Launcher` (NSIS one-click, perMachine).
-GitHub: https://github.com/AdamLlavelle/orbital-launcher — released: v0.1.0-beta.
+GitHub: https://github.com/AdamLlavelle/orbital-launcher — released: v0.2.0-beta.
 Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Launcher`.
 
 ## Working (verified)
@@ -28,13 +28,10 @@ Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Lau
   openProfileDetail detail-play disable).
 
 ## Local-only (committed, NOT pushed — Adam gates all pushes)
-- Everything after v0.1.0-beta: premades, wizard (all iterations), advanced
-  toggle, "Checking files" label, agent docs. GitHub still at 0.1.0-beta.
+- None — v0.2.0-beta shipped 2026-07-09; local main == origin/main.
 
 ## Next actions
 1. step-01: re-enable Forge (when Adam says go).
-2. Ship 0.2.0-beta when Adam says "ship it" (bump version, changelog, build,
-   push, release).
 
 ## File map (read only what you need)
 - src/main.js — ALL backend; `// ----------` section headers

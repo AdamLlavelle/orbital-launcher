@@ -2,6 +2,31 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.2.0-beta — 2026-07-09
+
+### Added
+- **Starter profiles**, created automatically: Latest Release (Fabric),
+  1.16.5 (Fabric), 1.12.2 (Forge + OptiFine preinstalled), 1.8.9
+  (Forge + OptiFine preinstalled)
+- **New Profile wizard**: two steps with a side rail — Details (name +
+  description with character counters) and Version (Vanilla/Fabric/Forge
+  pills with a curated version grid)
+- **Advanced toggle** in the wizard: switches the curated list to the full
+  catalog — every vanilla release, every Forge-supported version, every
+  Fabric-supported version (from each loader's own metadata)
+- Profile descriptions, shown on profile cards and the profile page
+
+### Changed
+- Curated version list: the newest update of each version line, down to
+  1.7.10 (Fabric down to 1.16.5)
+- Launch status now says "Checking files" during the pre-launch integrity
+  check instead of the misleading "Downloading" (existing files are never
+  re-downloaded)
+- Removed the Quilt loader option
+
+### Known issues
+- Forge launching remains temporarily disabled (fix staged for next release)
+
 ## 0.1.0-beta — 2026-07-08
 
 First public beta. The launcher works end to end, but plenty is still
