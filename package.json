@@ -1,7 +1,7 @@
 {
   "name": "orbital-launcher",
   "productName": "Orbital Launcher",
-  "version": "0.2.0-beta",
+  "version": "0.3.0-beta",
   "description": "A lightweight Minecraft launcher with Modrinth and CurseForge integration",
   "main": "src/main.js",
   "author": "Adam",

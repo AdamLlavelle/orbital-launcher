@@ -2,6 +2,16 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.3.0-beta — 2026-07-09
+
+### Fixed
+- **Forge launching works!** Modern Forge (1.13 through 26.x) runs the
+  official Forge installer once per version automatically, and a classpath
+  conflict with Forge's module system was resolved. Verified on 26.2.
+  The 1.12.2 and 1.8.9 starter profiles use the legacy path — report issues.
+- Browse Mods loading message now names the right source
+  (CurseForge for Forge, Modrinth for Fabric)
+
 ## 0.2.0-beta — 2026-07-09
 
 ### Added

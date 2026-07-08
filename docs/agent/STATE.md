@@ -4,7 +4,7 @@ Updated: 2026-07-09 (overwrite this file, never append; keep < 60 lines)
 ## What this is
 Electron 43 app. Source: `C:\Users\adaml\Projects\orbital-launcher`.
 Installed app: `C:\Program Files\Orbital Launcher` (NSIS one-click, perMachine).
-GitHub: https://github.com/AdamLlavelle/orbital-launcher — released: v0.2.0-beta.
+GitHub: https://github.com/AdamLlavelle/orbital-launcher — released: v0.3.0-beta.
 Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Launcher`.
 
 ## Working (verified)
@@ -28,11 +28,11 @@ Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Lau
 - Untested: legacy Forge path (1.8.9/1.12.2 premades, OptiFine in-game).
 
 ## Local-only (committed, NOT pushed — Adam gates all pushes)
-- Since v0.2.0-beta: Forge enablement, browse-mods source label fix.
+- None — v0.3.0-beta shipped 2026-07-09; local main == origin/main.
 
 ## Next actions
 1. Test 1.8.9 starter profile (legacy Forge + OptiFine).
-2. Ship 0.3.0-beta "Forge works" when Adam says so.
+2. step-03: TBD by Adam.
 
 ## File map (read only what you need)
 - src/main.js — ALL backend; `// ----------` section headers
