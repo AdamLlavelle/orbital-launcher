@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' https: data:; style-src 'self' 'unsafe-inline';" />
+  <title>Orbital Launcher</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/>
+        <ellipse cx="12" cy="12" rx="10.5" ry="4" transform="rotate(-24 12 12)"/>
+        <circle cx="20.5" cy="6.5" r="1.4" fill="currentColor" stroke="none"/>
+      </svg>
+      <span class="brand-name">Orbital</span>
+    </div>
+
+    <nav class="top-nav hidden" id="top-nav">
+      <button class="nav-tab active" data-page="home">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-tab" data-page="profiles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+        <span>Profiles</span>
+      </button>
+      <button class="nav-tab" data-page="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="topbar-right">
+      <button class="account-chip hidden" id="account-chip" title="Account settings">
+        <img id="account-avatar" src="" alt="" />
+        <span id="account-name"></span>
+      </button>
+      <div class="win-controls">
+        <button id="btn-min" title="Minimize">&#x2500;</button>
+        <button id="btn-max" title="Maximize">&#x25A1;</button>
+        <button id="btn-close" class="close" title="Close">&#x2715;</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Login screen -->
+  <div id="login-screen" class="login-screen hidden">
+    <div class="login-card">
+      <svg class="feather-logo big" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/>
+        <ellipse cx="12" cy="12" rx="10.5" ry="4" transform="rotate(-24 12 12)"/>
+        <circle cx="20.5" cy="6.5" r="1.4" fill="currentColor" stroke="none"/>
+      </svg>
+      <h1>Orbital</h1>
+      <p>A lightweight Minecraft launcher</p>
+      <button id="btn-login" class="ms-button">
+        <svg viewBox="0 0 21 21" width="18" height="18">
+          <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+          <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+          <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+          <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+        </svg>
+        Sign in with Microsoft
+      </button>
+      <p id="login-error" class="login-error hidden"></p>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div id="app" class="app hidden">
+    <main class="content">
+      <!-- HOME -->
+      <section id="page-home" class="page active">
+        <div class="hero home-hero">
+          <div class="home-center">
+            <h2 id="welcome-text">Welcome back</h2>
+            <p class="hero-sub">Ready to play some Minecraft?</p>
+
+            <div class="profile-picker">
+              <button id="profile-dropdown-btn" class="profile-dropdown-btn">
+                <div class="pd-labels">
+                  <span id="current-profile-name">Profile</span>
+                  <span id="current-profile-meta" class="profile-meta"></span>
+                </div>
+                <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div id="profile-dropdown" class="profile-dropdown hidden"></div>
+            </div>
+
+            <button id="btn-play" class="play-button center">
+              <div class="play-progress" id="play-progress"></div>
+              <span id="play-label">PLAY</span>
+            </button>
+            <p id="launch-status" class="launch-status"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROFILES -->
+      <section id="page-profiles" class="page">
+        <!-- Profile list view -->
+        <div id="profiles-view">
+          <div class="page-header">
+            <h2>Profiles</h2>
+            <div class="header-spacer"></div>
+            <button id="btn-new-profile" class="accent-button">+ New Profile</button>
+          </div>
+          <div id="profiles-list" class="profiles-grid"></div>
+        </div>
+
+        <!-- Profile detail view -->
+        <div id="profile-detail-view" class="hidden">
+          <div class="page-header">
+            <button id="btn-back-list" class="ghost-button back-btn">&larr; Profiles</button>
+            <h2 id="detail-name">Profile</h2>
+            <span id="detail-badge" class="loader-badge"></span>
+            <span class="context-chip" id="detail-version"></span>
+          </div>
+          <div class="detail-actions">
+            <button id="detail-play" class="accent-button play-green">&#9654;&nbsp; Play</button>
+            <button id="detail-browse" class="accent-button">Browse Mods</button>
+            <button id="detail-open-folder" class="ghost-button">Open Mods Folder</button>
+            <button id="detail-delete" class="ghost-button danger">Delete Profile</button>
+          </div>
+          <h3 class="section-title" id="installed-title">Installed mods</h3>
+          <div id="installed-mods" class="installed-list"></div>
+        </div>
+
+        <!-- Browse mods view -->
+        <div id="browse-view" class="hidden">
+          <div class="page-header">
+            <button id="btn-back-detail" class="ghost-button back-btn">&larr; Back</button>
+            <h2>Browse Mods</h2>
+            <span class="context-chip" id="browse-context"></span>
+          </div>
+          <div class="search-row">
+            <input id="mod-search" type="text" placeholder="Search Modrinth for mods... (e.g. Sodium)" />
+            <button id="btn-search" class="accent-button">Search</button>
+          </div>
+          <div id="category-filters" class="category-row"></div>
+          <div id="pager-top" class="pager"></div>
+          <div id="mod-results" class="mod-grid"></div>
+          <div id="pager-bottom" class="pager"></div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="page-settings" class="page">
+        <div class="page-header"><h2>Settings</h2></div>
+        <div class="settings-card">
+          <label class="setting-row">
+            <div>
+              <div class="setting-name">Memory (RAM)</div>
+              <div class="setting-desc">How much memory Minecraft can use</div>
+            </div>
+            <div class="ram-control">
+              <input type="range" id="ram-slider" min="2" max="16" step="1" />
+              <span id="ram-value">4 GB</span>
+            </div>
+          </label>
+          <div class="setting-row">
+            <div>
+              <div class="setting-name">Game folder</div>
+              <div class="setting-desc">Worlds, mods and game files live here</div>
+            </div>
+            <button id="btn-open-folder" class="ghost-button">Open folder</button>
+          </div>
+          <div class="setting-row">
+            <div>
+              <div class="setting-name">Account</div>
+              <div class="setting-desc" id="settings-account-name"></div>
+            </div>
+            <button id="btn-logout" class="ghost-button danger">Sign out</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- New profile modal -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>New Profile</h3>
+      <label class="modal-label">Name</label>
+      <input id="np-name" type="text" placeholder="e.g. Fabric 26.2, Old school PvP..." />
+      <label class="modal-label">Minecraft version</label>
+      <select id="np-version" class="version-select"></select>
+      <label class="modal-label">Mod loader</label>
+      <div class="loader-pills" id="np-loaders">
+        <button class="pill active" data-loader="vanilla">Vanilla</button>
+        <button class="pill" data-loader="fabric">Fabric</button>
+        <button class="pill" data-loader="forge" disabled title="Forge is temporarily disabled — coming back soon">Forge</button>
+      </div>
+      <div class="modal-actions">
+        <button id="np-cancel" class="ghost-button">Cancel</button>
+        <button id="np-create" class="accent-button">Create Profile</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mod versions drawer -->
+  <div id="drawer-overlay" class="drawer-overlay hidden"></div>
+  <aside id="version-drawer" class="version-drawer">
+    <div class="drawer-header">
+      <div class="drawer-titles">
+        <h3 id="drawer-mod-title">Versions</h3>
+        <span id="drawer-context" class="profile-meta"></span>
+      </div>
+      <button id="drawer-close" class="remove-btn" title="Close">&#x2715;</button>
+    </div>
+    <div id="drawer-list" class="drawer-list"></div>
+  </aside>
+
+  <div id="toast-container" class="toast-container"></div>
+  <script src="app.js"></script>
+</body>
+</html>

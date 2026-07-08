@@ -1,0 +1,46 @@
+{
+  "name": "orbital-launcher",
+  "productName": "Orbital Launcher",
+  "version": "1.0.0",
+  "description": "A lightweight Minecraft launcher with Modrinth and CurseForge integration",
+  "main": "src/main.js",
+  "author": "Adam",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "icon": "node tools/make-icon.js",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.orbital.launcher",
+    "productName": "Orbital Launcher",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Orbital Launcher"
+    }
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.18",
+    "minecraft-launcher-core": "^3.18.2",
+    "msmc": "^5.0.5",
+    "tomate-loaders": "^2.0.2"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3"
+  }
+}
