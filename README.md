@@ -3,6 +3,10 @@
 A lightweight Minecraft launcher with Microsoft account sign-in, per-version
 profiles, and built-in mod downloads from Modrinth and CurseForge.
 
+> **Note:** This project was built entirely by AI (Claude, by Anthropic),
+> directed by me — I described the features and gave feedback, the AI wrote
+> the code. Sharing that up front for transparency.
+
 ## Features
 
 - **Microsoft sign-in** — official Microsoft OAuth flow (via msmc); your real
