@@ -23,10 +23,10 @@ Do NOT scan the repo beyond files those docs point to unless the task requires i
   installer via `explorer.exe "dist\Orbital Launcher Setup <ver>.exe"` so Adam
   ends up with the real installed exe. Don't skip this — it's the last step of
   every ship.
-- Adam trusts agent judgment on scope/direction (step-07 era), BUT before any
-  HUGE change (big refactor, new subsystem, UI overhaul, dependency swap,
-  anything hard to undo) STOP and describe it to Adam first — proceed only on
-  his OK. Small/medium changes: just do them.
+- Adam trusts agent judgment on scope/direction (step-07 era); proceed freely
+  within an approved phase. STOP AND ASK only for STRUCTURAL changes: new
+  dependencies, UI redesigns, data-format/schema changes, anything hard to
+  undo. (Calibrated with Adam 2026-07-09.)
 
 ## Update contract
 At every milestone (step done, decision made, gotcha discovered): update

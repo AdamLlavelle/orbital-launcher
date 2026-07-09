@@ -14,17 +14,15 @@ Current step: **step-07** (elevate to "the real deal" — scope with Adam first)
 - [x] step-06 — Auto-update (electron-updater + GitHub; GOTCHAS #11)
 
 ## Now
-- [ ] step-07 — **ELEVATE TO THE REAL DEAL** ← CURRENT (no step file yet —
-      write one after brainstorming with Adam). Goal: move from hobby-tier to
-      a serious client. Candidate directions to discuss (NOT yet committed):
-      · robustness/error-handling audit, loading & empty states everywhere
-      · news/changelog feed on home, richer home dashboard
-      · account: multi-account switching, offline mode, cape display
-      · mods: modpack import/export, update-all, profile duplication, drag-drop
-      · per-profile settings (RAM/args/resolution), profile icons/backgrounds
-      · performance: faster launches, parallel downloads, cached version meta
-      · polish: onboarding, keyboard nav, accessibility, first-run experience
-      First ship the pending 0.4.0-beta (auto-update) before big new work.
+- [ ] step-07 — **ELEVATE TO THE REAL DEAL** ← CURRENT. Scope approved by
+      Adam 2026-07-09; full plan in steps/step-07.md. Three phases, each
+      ships a release:
+      · Phase A (current): bulletproof — error audit, skeletons/empty states,
+        perf (cached manifests, parallel downloads), launch diagnostics → 0.5.0
+      · Phase B: modpack import/export, update-all, profile dup/icons/
+        per-profile settings, multi-account → 0.6.0
+      · Phase C: home dashboard/news/playtime, onboarding, keyboard nav → 0.7.0
+      (0.4.0-beta shipped 2026-07-09 — auto-update live from next release.)
 
 ## Later / parked
 - [ ] In-game client mod (Lunar-style): Right Shift → in-game overlay menu
