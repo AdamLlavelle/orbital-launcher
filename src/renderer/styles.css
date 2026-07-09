@@ -506,6 +506,10 @@ html, body {
 .ghost-button.danger { color: var(--red); border-color: rgba(229, 83, 75, 0.4); }
 .ghost-button.danger:hover { background: rgba(229, 83, 75, 0.12); }
 
+/* ---------- Crash card ---------- */
+
+.update-card.crash .update-icon.crash-icon { color: var(--red); }
+
 /* ---------- Loading skeletons ---------- */
 
 .skeleton {

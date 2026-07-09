@@ -960,10 +960,27 @@ feather.onLaunchStatus(({ stage, percent, message }) => {
   }
 });
 
-feather.onLaunchClosed(({ code }) => {
+feather.onLaunchClosed(({ code, crashed, startedOk, diagnosis }) => {
   resetPlayButton();
-  if (code && code !== 0) toast(`Minecraft exited with code ${code}`, 'error');
+  if (!crashed) return;
+  $('crash-title').textContent = startedOk ? 'Minecraft crashed' : "Minecraft couldn't start";
+  $('crash-desc').textContent = diagnosis
+    || `Minecraft exited unexpectedly (code ${code}). Copy the log for details — it usually names the mod at fault.`;
+  $('crash-card').classList.remove('hidden');
 });
+
+const hideCrashCard = () => $('crash-card').classList.add('hidden');
+$('crash-ok').onclick = hideCrashCard;
+$('crash-dismiss').onclick = hideCrashCard;
+$('crash-copy').onclick = async () => {
+  try {
+    const log = await feather.getGameLog();
+    await navigator.clipboard.writeText(log || '(no game output captured)');
+    toast('Game log copied to clipboard', 'success');
+  } catch (err) {
+    toast(cleanError(err), 'error');
+  }
+};
 
 // ---------- settings ----------
 const ramSlider = $('ram-slider');

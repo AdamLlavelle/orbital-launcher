@@ -688,10 +688,52 @@ async function ensureForgeInstalled(version, installerPath, javaPath) {
   console.log('[forge-install] done for', version);
 }
 
+// Recent game/MLC output, kept for crash diagnostics and the Copy Log button.
+const GAME_LOG_MAX = 600;
+let gameLog = [];
+function logGame(line) {
+  gameLog.push(line);
+  if (gameLog.length > GAME_LOG_MAX) gameLog.splice(0, gameLog.length - GAME_LOG_MAX);
+}
+
+// Known crash signatures → plain-English explanations. First match wins;
+// ordered so the most specific causes are checked before generic ones.
+const CRASH_SIGNATURES = [
+  [/Could not reserve enough space|paging file is too small/i,
+    "Windows couldn't give Minecraft that much RAM — lower the RAM slider in Settings or close other apps."],
+  [/OutOfMemoryError/i,
+    'Minecraft ran out of memory. Raise the RAM slider in Settings, or remove memory-hungry mods.'],
+  [/DuplicateModsFoundException|Found a duplicate mod|duplicate mods/i,
+    "Two copies of the same mod are installed. Open the profile's mod list and remove one."],
+  [/Missing or unsupported mandatory dependencies|which is missing|requires .* of (mod|fabric)/i,
+    'A mod is missing a dependency (or needs a different version of one). Check the mod list — installing the missing library mod usually fixes it.'],
+  [/Incompatible mods? found|does not support Minecraft|Mod .* is not compatible/i,
+    "A mod isn't compatible with this Minecraft version. Disable recently added mods and try again."],
+  [/Mixin apply failed|MixinApplyError|Mixin transformation .* failed/i,
+    'A mod failed to load (Mixin error) — it was probably built for a different Minecraft version. Disable recently added mods.'],
+  [/UnsupportedClassVersionError/i,
+    'A mod was built for a different Java version — it likely targets a newer Minecraft than this profile.'],
+  [/Pixel format not accelerated|GLFW error|Failed to create .*(GL|display)/i,
+    'Graphics driver problem — try updating your GPU drivers.'],
+  [/trying to load FabricLoaderImpl/i,
+    'Fabric failed to start. Try deleting and recreating the profile — if it persists, report this.']
+];
+
+function diagnoseCrash() {
+  const text = gameLog.join('\n');
+  for (const [re, msg] of CRASH_SIGNATURES) {
+    if (re.test(text)) return msg;
+  }
+  return null;
+}
+
+ipcMain.handle('diag:gameLog', () => gameLog.join('\n'));
+
 ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
   if (!token) throw new Error('Not signed in');
   if (gameRunning) throw new Error('Game is already running');
   gameRunning = true;
+  gameLog = [];
 
   try {
     const data = await ensureProfiles();
@@ -743,7 +785,10 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
     const launcher = new Client();
     let started = false;
 
-    launcher.on('debug', (m) => console.log('[MLC]', m));
+    launcher.on('debug', (m) => {
+      console.log('[MLC]', m);
+      logGame(`[MLC] ${m}`);
+    });
     // MLC puts the Forge *installer* jar on the classpath. Modern Forge's
     // bootstrap builds a JPMS module graph from the classpath, and the
     // installer's bundled jopt-simple collides with the real one
@@ -768,7 +813,10 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
     });
     launcher.on('data', (d) => {
       const line = String(d).trim();
-      if (line) console.log('[game]', line);
+      if (line) {
+        console.log('[game]', line);
+        logGame(line);
+      }
       if (!started && s.minimizeOnLaunch && win && !win.isDestroyed()) win.minimize();
     });
     launcher.on('progress', (p) => {
@@ -787,7 +835,13 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
       gameRunning = false;
       console.log('[game] exited with code', code);
       if (s.minimizeOnLaunch && win && !win.isDestroyed() && win.isMinimized()) win.restore();
-      send('launch:closed', { code });
+      const crashed = code !== 0 && code !== null;
+      send('launch:closed', {
+        code,
+        crashed,
+        startedOk: started,
+        diagnosis: crashed ? diagnoseCrash() : null
+      });
     });
 
     await launcher.launch({

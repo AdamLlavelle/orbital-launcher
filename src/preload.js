@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld('feather', {
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   openFolder: (sub) => ipcRenderer.invoke('app:openFolder', sub),
   getAppVersion: () => ipcRenderer.invoke('app:version'),
+  getGameLog: () => ipcRenderer.invoke('diag:gameLog'),
   importOldData: () => ipcRenderer.invoke('data:import'),
 
   // Auto-update

@@ -398,6 +398,24 @@
   <div id="toast-container" class="toast-container"></div>
   <div id="version-badge" class="version-badge"></div>
 
+  <!-- Crash card: shown when Minecraft exits with a non-zero code -->
+  <div id="crash-card" class="update-card crash hidden">
+    <div class="update-icon crash-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+    <div class="update-content">
+      <div class="update-title" id="crash-title">Minecraft crashed</div>
+      <div class="update-desc" id="crash-desc"></div>
+      <div class="update-actions">
+        <button id="crash-copy" class="ghost-button">Copy Log</button>
+        <button id="crash-ok" class="accent-button">OK</button>
+      </div>
+    </div>
+    <button id="crash-dismiss" class="update-x" title="Dismiss">&#x2715;</button>
+  </div>
+
   <!-- Boot failure screen (shown only if init itself throws) -->
   <div id="boot-error" class="boot-error hidden">
     <div class="boot-error-box">
