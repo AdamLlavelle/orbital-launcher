@@ -2,6 +2,29 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.4.0-beta — 2026-07-09
+
+### Added
+- **Automatic updates**: the launcher now checks GitHub for new releases on
+  startup and offers to download and install them in-app — no more manually
+  grabbing the installer. (Takes effect from this release onward.)
+- **Settings**: game resolution and fullscreen, RAM allocation, custom Java
+  arguments, minimize-while-playing, an "open game folder" shortcut, "Import
+  from .minecraft" for existing worlds/settings, sign out, and a manual
+  check-for-updates button.
+- **Saved skins library**: keep a personal collection of skins with face
+  thumbnails — apply or delete any of them with one click.
+
+### Changed
+- **New look (Design V2)**: animated starfield with a floating planet hero,
+  smooth page and modal transitions, hover physics, a gradient Play button,
+  and a custom title bar. Respects your system's reduced-motion setting.
+
+### Fixed
+- Skin operations no longer trip Mojang's rate limits (model variant toggles
+  now render locally instead of re-fetching).
+- More robust account profile and avatar handling.
+
 ## 0.3.1-beta — 2026-07-09
 
 ### Added
