@@ -584,17 +584,18 @@ html, body {
 
 /* ---------- Version badge ---------- */
 
+/* sits in the top bar next to the brand name — in the window chrome, so it
+   can never overlap or cut off page content */
 .version-badge {
-  position: fixed;
-  bottom: 8px;
-  left: 10px;
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--muted);
-  opacity: 0.55;
-  z-index: 50;
+  opacity: 0.6;
+  align-self: flex-end;
+  margin-bottom: 3px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   pointer-events: none;
   user-select: none;
-  letter-spacing: 0.02em;
 }
 
 /* ---------- Toasts ---------- */
