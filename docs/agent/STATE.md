@@ -1,5 +1,5 @@
 # STATE — Orbital Launcher
-Updated: 2026-07-09 (overwrite this file, never append; keep < 70 lines)
+Updated: 2026-07-09 evening (overwrite this file, never append; keep < 70 lines)
 
 ## What this is
 Electron 43 Minecraft launcher. Source: `C:\Users\adaml\Projects\orbital-launcher`.
@@ -8,11 +8,13 @@ GitHub: https://github.com/AdamLlavelle/orbital-launcher.
 Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Launcher`.
 Built entirely by AI, directed by Adam (attribution in README + releases).
 
-## Mission for next session
-Adam's take: "looks great, but still like a small project, not the real deal."
-Next session = elevate it from hobby-tier to a serious, polished client
-(depth, robustness, features that rival Lunar/Prism/Modrinth App). Brainstorm
-scope with him first; then update ROADMAP into a real plan before building.
+## Mission: step-07 "the real deal" (plan approved, see steps/step-07.md)
+Phase A (bulletproof) CODE DONE 2026-07-09: error audit, skeletons, perf
+caches, crash diagnostics. Awaiting Adam's "ship it" for 0.5.0-beta.
+Then Phase B (modpacks, update-all, multi-account), Phase C (dashboard,
+onboarding). Adam's rules: proceed freely in-phase; ask only for structural
+changes (new deps, redesigns, schema changes). Tiny version badge added
+(bottom-left, renderer #version-badge).
 
 ## Working & verified
 - Microsoft sign-in (msmc, persistent, empty-profile retry guard)
@@ -34,12 +36,13 @@ scope with him first; then update ROADMAP into a real plan before building.
   physics, gradient Play button, custom top bar. Reduced-motion respected.
 
 ## Shipped vs local
-- Latest GitHub release: **v0.4.0-beta** (auto-update, settings expansion,
-  Design V2, skin library, skin rate-limit fix, profile/avatar robustness) —
-  shipped 2026-07-09 with .exe + latest.yml. Repo pushed, HEAD == origin/main.
-- 0.4.0-beta is the FIRST release carrying the updater code, so in-app
-  auto-update actually activates from the NEXT release (0.5.0+). See GOTCHAS #11.
-- Nothing local-only pending. Next ship = whatever step-07 produces.
+- Latest GitHub release: **v0.4.0-beta** (auto-update, settings, Design V2,
+  skin library) — shipped 2026-07-09 with .exe + latest.yml.
+- LOCAL-ONLY, committed not pushed: version badge + all of Phase A (A1–A4:
+  error audit, skeletons, perf caches, crash diagnostics). Next ship =
+  **0.5.0-beta**; it's the FIRST update installed users' auto-updater will
+  detect — verify the in-app update popup end-to-end (GOTCHAS #11: upload
+  hyphenated .exe + latest.yml).
 
 ## Known loose ends
 - Legacy Forge (1.8.9/1.12.2 + OptiFine) not tested end-to-end in-game.

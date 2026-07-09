@@ -9,18 +9,20 @@ Adam's operating rules for this step (set 2026-07-09, Fable 5 session):
   data-format/schema changes, anything hard to undo.
 - Ship each phase as its own release (0.5.0-beta, 0.6.0-beta, ...).
 
-## Phase A — Feel bulletproof  ← CURRENT
-- [ ] A1 Error-handling audit: every IPC/network/launch failure surfaces a
-      friendly message + retry where sensible; offline detection (no blank
-      hangs, no raw stack traces in UI)
-- [ ] A2 Loading skeletons + empty states on every view (profiles, mods,
-      skins, settings) — no blank flashes or dead-looking panels
-- [ ] A3 Performance: cache version manifests (disk + TTL), parallelize
-      downloads where safe, faster launch path, instant UI boot
-- [ ] A4 Launch-failure diagnostics: parse common crash causes into plain
-      English + one-click "copy log" button
-- [ ] Ship 0.5.0-beta (first release where auto-update actually fires for
-      installed users — verify the update popup works end-to-end!)
+## Phase A — Feel bulletproof  ← CURRENT (code done 2026-07-09, unshipped)
+- [x] A1 Error-handling audit: friendly net errors (no raw URLs), offline
+      detection, atomic .part downloads (partial-file bug fixed), boot-error
+      screen w/ retry, inline error notes w/ Retry in all lists
+- [x] A2 Loading skeletons (shimmer, reduced-motion aware) + empty/error
+      states: mod browser, installed mods, version drawer, skin library
+- [x] A3 Perf: manifest disk cache 30min + stale-if-offline, allVersions 24h
+      cache + parallel loader lookups, java-major cached forever, parallel
+      dep installs, parallel boot (profiles ∥ MS refresh)
+- [x] A4 Crash diagnostics: game-output ring buffer, 9 crash signatures →
+      plain English, crash card w/ Copy Log (crashed vs couldn't-start)
+- [ ] Ship 0.5.0-beta — WAITING ON ADAM'S "ship it" (first release where
+      auto-update actually fires for installed users — verify the update
+      popup works end-to-end!)
 
 ## Phase B — Power features (after A ships)
 - Modpack import (.mrpack + CurseForge) / export profile as pack  ← flagship
