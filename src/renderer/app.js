@@ -53,6 +53,24 @@ function cleanError(err) {
   return String(err && err.message ? err.message : err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 }
 
+// Shimmering placeholder rows shown while a list loads — same geometry as the
+// real cards so nothing jumps when content lands.
+function showSkeletons(el, count) {
+  el.innerHTML = '';
+  for (let i = 0; i < count; i++) {
+    const sk = document.createElement('div');
+    sk.className = 'sk-item';
+    sk.innerHTML =
+      '<div class="skeleton sk-icon"></div>' +
+      '<div class="sk-lines">' +
+      '<div class="skeleton sk-line w60"></div>' +
+      '<div class="skeleton sk-line w90"></div>' +
+      '<div class="skeleton sk-line w35"></div>' +
+      '</div>';
+    el.appendChild(sk);
+  }
+}
+
 // Inline error block with an optional Retry button — used wherever a list
 // would otherwise silently stay empty or stuck on "Loading...".
 function errorNote(message, retry) {
@@ -560,7 +578,7 @@ async function fetchModPage() {
   const btn = $('btn-search');
   btn.disabled = true;
   const resultsEl = $('mod-results');
-  resultsEl.innerHTML = `<p class="empty-note">Loading mods from ${p.loader === 'forge' ? 'CurseForge' : 'Modrinth'}...</p>`;
+  showSkeletons(resultsEl, 6);
   try {
     const { total, hits } = await feather.searchMods({
       query: $('mod-search').value.trim(),
@@ -722,7 +740,7 @@ async function openVersionDrawer(hit) {
   $('drawer-mod-title').textContent = hit.title;
   $('drawer-context').textContent = `${loaderLabel(p.loader)} · ${p.version}`;
   const listEl = $('drawer-list');
-  listEl.innerHTML = '<p class="empty-note">Loading versions...</p>';
+  showSkeletons(listEl, 4);
   drawerOverlay.classList.remove('hidden');
   drawer.classList.add('open');
 
@@ -782,7 +800,7 @@ async function loadInstalledMods() {
   const p = state.viewProfile;
   if (!p) return;
   const listEl = $('installed-mods');
-  listEl.innerHTML = '<p class="empty-note">Loading mods...</p>';
+  showSkeletons(listEl, 3);
   let mods;
   try {
     mods = await feather.listMods(p.id, true); // with Modrinth metadata
@@ -1040,7 +1058,14 @@ function faceThumb(dataUrl) {
 
 async function renderSkinLib() {
   const lib = $('skin-lib');
-  const skins = await feather.listSavedSkins();
+  let skins;
+  try {
+    skins = await feather.listSavedSkins();
+  } catch (err) {
+    lib.innerHTML = '';
+    lib.appendChild(errorNote(cleanError(err), renderSkinLib));
+    return;
+  }
   lib.innerHTML = '';
   if (!skins.length) {
     lib.innerHTML = '<p class="skin-hint">No saved skins yet — upload one or hit Save Current Skin.</p>';
