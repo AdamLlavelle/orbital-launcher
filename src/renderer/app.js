@@ -1216,6 +1216,7 @@ if (checkBtn) {
 
 // ---------- init ----------
 (async function init() {
+  feather.getAppVersion().then((v) => { $('version-badge').textContent = `v${v}`; }).catch(() => {});
   state.settings = await feather.getSettings();
   ramSlider.value = state.settings.ram;
   $('ram-value').textContent = `${state.settings.ram} GB`;

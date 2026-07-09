@@ -1219,6 +1219,8 @@ ipcMain.handle('settings:set', (_e, patch) => {
   return merged;
 });
 
+ipcMain.handle('app:version', () => app.getVersion());
+
 ipcMain.handle('app:openFolder', async (_e, sub) => {
   const dir = sub ? path.join(GAME_ROOT, sub) : GAME_ROOT;
   await fsp.mkdir(dir, { recursive: true });
