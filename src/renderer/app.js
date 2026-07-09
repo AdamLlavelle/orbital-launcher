@@ -1194,9 +1194,23 @@ if (checkBtn) {
     manualCheck = true;
     checkBtn.disabled = true;
     checkBtn.textContent = 'Checking...';
-    const res = await feather.checkUpdate();
-    setTimeout(() => { checkBtn.disabled = false; checkBtn.textContent = 'Check for Updates'; }, 1500);
-    if (res && res.error) { manualCheck = false; toast('Update check failed', 'error'); }
+    try {
+      const res = await feather.checkUpdate();
+      if (res && res.dev) {
+        manualCheck = false;
+        toast('Updates only work in the installed app, not the dev build', 'info');
+      } else if (res && res.error) {
+        manualCheck = false;
+        toast('Update check failed: ' + res.error, 'error');
+      }
+      // otherwise the update:available / update:none events handle the result
+    } catch (err) {
+      manualCheck = false;
+      toast('Update check failed', 'error');
+    } finally {
+      checkBtn.disabled = false;
+      checkBtn.textContent = 'Check for Updates';
+    }
   };
 }
 

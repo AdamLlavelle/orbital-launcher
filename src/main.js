@@ -244,40 +244,42 @@ app.on('window-all-closed', () => app.quit());
 let updateState = 'idle'; // idle | checking | available | downloading | ready | none | error
 
 function setupAutoUpdater() {
-  if (!app.isPackaged) return; // updater can't run from source/dev
-  let autoUpdater;
-  try {
-    ({ autoUpdater } = require('electron-updater'));
-  } catch {
-    return;
-  }
-  autoUpdater.autoDownload = false;         // ask the user first
-  autoUpdater.allowPrerelease = true;       // our releases are betas
-  autoUpdater.autoInstallOnAppQuit = true;
+  let autoUpdater = null;
+  // The updater only functions in the installed (packaged) app; in dev the
+  // handlers still exist but report "dev mode" so the UI never hangs.
+  if (app.isPackaged) {
+    try {
+      ({ autoUpdater } = require('electron-updater'));
+      autoUpdater.autoDownload = false;
+      autoUpdater.allowPrerelease = true;
+      autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on('update-available', (info) => {
-    updateState = 'available';
-    send('update:available', { version: info.version, notes: typeof info.releaseNotes === 'string' ? info.releaseNotes : '' });
-  });
-  autoUpdater.on('update-not-available', () => { updateState = 'none'; send('update:none', {}); });
-  autoUpdater.on('download-progress', (p) => send('update:progress', { percent: Math.round(p.percent) }));
-  autoUpdater.on('update-downloaded', () => { updateState = 'ready'; send('update:ready', {}); });
-  autoUpdater.on('error', (err) => {
-    updateState = 'error';
-    console.log('[updater]', err && err.message);
-    send('update:error', { message: String(err && err.message || err) });
-  });
+      autoUpdater.on('update-available', (info) => {
+        updateState = 'available';
+        send('update:available', { version: info.version });
+      });
+      autoUpdater.on('update-not-available', () => { updateState = 'none'; send('update:none', {}); });
+      autoUpdater.on('download-progress', (p) => send('update:progress', { percent: Math.round(p.percent) }));
+      autoUpdater.on('update-downloaded', () => { updateState = 'ready'; send('update:ready', {}); });
+      autoUpdater.on('error', (err) => {
+        updateState = 'error';
+        console.log('[updater]', err && err.message);
+        send('update:error', { message: String(err && err.message || err) });
+      });
+
+      setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 3000);
+    } catch (e) {
+      console.log('[updater] init failed:', e.message);
+    }
+  }
 
   ipcMain.handle('update:check', async () => {
-    updateState = 'checking';
-    try { await autoUpdater.checkForUpdates(); } catch (e) { return { error: String(e.message || e) }; }
-    return { ok: true };
+    if (!autoUpdater) return { dev: true };
+    try { await autoUpdater.checkForUpdates(); return { ok: true }; }
+    catch (e) { return { error: String(e.message || e) }; }
   });
-  ipcMain.handle('update:download', async () => { updateState = 'downloading'; autoUpdater.downloadUpdate(); return true; });
-  ipcMain.handle('update:install', () => { autoUpdater.quitAndInstall(); });
-
-  // check shortly after launch
-  setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 3000);
+  ipcMain.handle('update:download', async () => { if (autoUpdater) autoUpdater.downloadUpdate(); return true; });
+  ipcMain.handle('update:install', () => { if (autoUpdater) autoUpdater.quitAndInstall(); });
 }
 
 ipcMain.on('win:minimize', () => win.minimize());

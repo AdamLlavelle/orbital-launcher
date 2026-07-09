@@ -55,18 +55,27 @@
    handler), modern Forge launches. Legacy (<=1.12) skips both; 1.8.9 path
    still untested end-to-end. VERIFIED working on 26.2 (2026-07-09).
 
+10. **Releases**: electron-builder NSIS, `perMachine`+`oneClick` → Program Files,
+   UAC prompt Adam must click. Version comes from package.json. gh CLI authed
+   as AdamLlavelle. Latest GitHub release: v0.3.1-beta (0.4.0-beta pending,
+   local-only). Don't history-rewrite (filter-branch) — repo is public/shared.
+   Ship flow: bump package.json, update CHANGELOG, `npm run dist`, commit,
+   push, `gh release create vX --prerelease` uploading BOTH the .exe AND
+   latest.yml, then run the new installer.
+
 11. **Auto-update** (electron-updater, GitHub provider, allowPrerelease=true
     since releases are betas). Only runs when `app.isPackaged` — never in the
-    dev bat. CRITICAL: every `gh release create` MUST upload `dist/latest.yml`
-    ALONGSIDE the .exe, or installed apps can't detect the update. Build config
-    has a `publish` block so electron-builder generates latest.yml into dist/.
-    Auto-update activates from the NEXT release after the one that first
-    shipped the updater code (0.4.0-beta). Flow: check on launch (3s delay) →
-    update-available → in-app popup → user clicks → downloadUpdate →
-    update-downloaded → quitAndInstall. Manual "Check for Updates" in Settings.
+    dev bat (handlers still registered in dev, return `{dev:true}` so the UI
+    doesn't hang). CRITICAL: every `gh release create` MUST upload
+    `dist/latest.yml` ALONGSIDE the .exe, or installed apps can't detect the
+    update. Build config has a `publish` block so electron-builder generates
+    latest.yml. Activates from the NEXT release after the one that first ships
+    the updater code (0.4.0-beta). Flow: check on launch (3s) → update-available
+    → in-app popup → downloadUpdate → update-downloaded → quitAndInstall.
 
-10. **Releases**: electron-builder NSIS, `perMachine`+`oneClick` → Program Files,
-   UAC prompt Adam must click. Version comes from package.json (currently
-   0.1.0-beta). gh CLI authed as AdamLlavelle. The initial commit message was
-   history-rewritten once (filter-branch) — don't do that again now that the
-   repo is public and shared.
+12. **Skin API is rate-limited hard by Mojang (429).** Cache the profile in
+    main (`skinCache`); variant toggle re-renders the 3D model LOCALLY from the
+    cached skin bytes (no network) and makes only ONE setVariant call. Don't
+    call a full network refresh after every skin op. `mcErr()` gives friendly
+    429/401 messages. Restore validates name+id present or retries (empty
+    profile = "default skin, no name" chip bug).
