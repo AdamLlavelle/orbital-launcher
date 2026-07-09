@@ -57,8 +57,8 @@
 
 10. **Releases**: electron-builder NSIS, `perMachine`+`oneClick` → Program Files,
    UAC prompt Adam must click. Version comes from package.json. gh CLI authed
-   as AdamLlavelle. Latest GitHub release: v0.3.1-beta (0.4.0-beta pending,
-   local-only). Don't history-rewrite (filter-branch) — repo is public/shared.
+   as AdamLlavelle. Latest GitHub release: v0.4.0-beta (shipped 2026-07-09).
+   Don't history-rewrite (filter-branch) — repo is public/shared.
    Ship flow: bump package.json, update CHANGELOG, `npm run dist`, commit,
    push, `gh release create vX --prerelease` uploading BOTH the .exe AND
    latest.yml, then run the new installer.
@@ -72,6 +72,12 @@
     latest.yml. Activates from the NEXT release after the one that first ships
     the updater code (0.4.0-beta). Flow: check on launch (3s) → update-available
     → in-app popup → downloadUpdate → update-downloaded → quitAndInstall.
+    FILENAME MATCH (learned shipping 0.4.0-beta): electron-builder writes the
+    .exe url in latest.yml with HYPHENS (`Orbital-Launcher-Setup-X.exe`) but the
+    built file has SPACES, and GitHub mangles spaces in asset names. When
+    uploading via gh CLI, `cp` the exe to the exact hyphenated name first and
+    upload THAT, or electron-updater can't find the file. (v0.4.0-beta uploaded
+    the hyphenated exe + latest.yml — both names line up.)
 
 12. **Skin API is rate-limited hard by Mojang (429).** Cache the profile in
     main (`skinCache`); variant toggle re-renders the 3D model LOCALLY from the

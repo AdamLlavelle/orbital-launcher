@@ -34,11 +34,12 @@ scope with him first; then update ROADMAP into a real plan before building.
   physics, gradient Play button, custom top bar. Reduced-motion respected.
 
 ## Shipped vs local
-- Latest GitHub release: **v0.3.1-beta** (skin editor).
-- LOCAL-ONLY, committed but NOT pushed: settings expansion, Design V2 +
-  polish, skin library, skin rate-limit fix, profile/avatar robustness,
-  AUTO-UPDATE. Next ship = **0.4.0-beta** (first release with the updater;
-  MUST upload latest.yml — GOTCHAS #11).
+- Latest GitHub release: **v0.4.0-beta** (auto-update, settings expansion,
+  Design V2, skin library, skin rate-limit fix, profile/avatar robustness) —
+  shipped 2026-07-09 with .exe + latest.yml. Repo pushed, HEAD == origin/main.
+- 0.4.0-beta is the FIRST release carrying the updater code, so in-app
+  auto-update actually activates from the NEXT release (0.5.0+). See GOTCHAS #11.
+- Nothing local-only pending. Next ship = whatever step-07 produces.
 
 ## Known loose ends
 - Legacy Forge (1.8.9/1.12.2 + OptiFine) not tested end-to-end in-game.
