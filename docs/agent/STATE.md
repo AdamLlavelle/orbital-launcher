@@ -48,6 +48,8 @@ scope with him first; then update ROADMAP into a real plan before building.
 ## Standing rules (also in CLAUDE.md + memory)
 - Test via `Orbital Launcher (dev).bat` through explorer.exe, never installer.
 - NEVER push/release until Adam says "ship it". Local commits fine.
+- AFTER every ship, launch the new installer via explorer.exe so Adam gets the
+  real exe (last step of the ship flow — GOTCHAS #10).
 - Renderer console + game logs → `%USERPROFILE%\feather-launcher.log`.
 
 ## File map

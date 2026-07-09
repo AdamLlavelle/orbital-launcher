@@ -61,7 +61,9 @@
    Don't history-rewrite (filter-branch) — repo is public/shared.
    Ship flow: bump package.json, update CHANGELOG, `npm run dist`, commit,
    push, `gh release create vX --prerelease` uploading BOTH the .exe AND
-   latest.yml, then run the new installer.
+   latest.yml, then ALWAYS launch the new installer via
+   `explorer.exe "dist\Orbital Launcher Setup <ver>.exe"` (last step of every
+   ship — Adam wants the real installed exe, not just the release).
 
 11. **Auto-update** (electron-updater, GitHub provider, allowPrerelease=true
     since releases are betas). Only runs when `app.isPackaged` — never in the

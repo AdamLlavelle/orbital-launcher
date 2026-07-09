@@ -19,7 +19,10 @@ Do NOT scan the repo beyond files those docs point to unless the task requires i
 - Test with the dev bat, never via installer, unless told otherwise.
 - NEVER push to GitHub or publish releases until Adam explicitly says to ship.
   Local commits are fine and encouraged at milestones.
-- Forge launching is gated off in the UI until step-01 is done.
+- AFTER shipping a release (push + gh release), ALWAYS launch the freshly built
+  installer via `explorer.exe "dist\Orbital Launcher Setup <ver>.exe"` so Adam
+  ends up with the real installed exe. Don't skip this — it's the last step of
+  every ship.
 
 ## Update contract
 At every milestone (step done, decision made, gotcha discovered): update
