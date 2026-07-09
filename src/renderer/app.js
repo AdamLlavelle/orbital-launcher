@@ -43,7 +43,10 @@ function toast(message, type = 'info', ms = 4200) {
   el.className = `toast ${type}`;
   el.textContent = message;
   $('toast-container').appendChild(el);
-  setTimeout(() => el.remove(), ms);
+  setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 320);
+  }, ms);
 }
 
 function cleanError(err) {
@@ -81,8 +84,17 @@ function showApp() {
   $('settings-account-name').textContent = `Signed in as ${state.profile.name}`;
   $('account-name').textContent = state.profile.name;
   const avatar = $('account-avatar');
-  avatar.src = `https://mc-heads.net/avatar/${state.profile.uuid}/64`;
+  loadAvatar(avatar, state.profile.uuid);
   $('account-chip').title = state.profile.name;
+}
+
+// mc-heads.net is a third-party service that occasionally fails; retry a
+// couple times with a cache-buster before giving up so the chip isn't blank.
+function loadAvatar(img, uuid, attempt = 0) {
+  img.onerror = () => {
+    if (attempt < 3) setTimeout(() => loadAvatar(img, uuid, attempt + 1), 1200 * (attempt + 1));
+  };
+  img.src = `https://mc-heads.net/avatar/${uuid}/64${attempt ? `?r=${attempt}` : ''}`;
 }
 
 $('btn-login').onclick = async () => {
@@ -899,9 +911,45 @@ ramSlider.onchange = () => {
 
 $('btn-open-folder').onclick = () => feather.openFolder();
 
+// game/launcher settings inputs → saved on change
+function saveSetting(patch) {
+  Object.assign(state.settings, patch);
+  feather.setSettings(patch);
+}
+$('set-resw').onchange = () => saveSetting({ resW: Number($('set-resw').value) || null });
+$('set-resh').onchange = () => saveSetting({ resH: Number($('set-resh').value) || null });
+$('set-fullscreen').onchange = () => saveSetting({ fullscreen: $('set-fullscreen').checked });
+$('set-minimize').onchange = () => saveSetting({ minimizeOnLaunch: $('set-minimize').checked });
+$('set-javaargs').onchange = () => saveSetting({ javaArgs: $('set-javaargs').value.trim() });
+
+$('btn-import-data').onclick = async () => {
+  const btn = $('btn-import-data');
+  btn.disabled = true;
+  btn.textContent = 'Importing...';
+  try {
+    await feather.importOldData();
+    toast('Imported worlds, servers, settings and packs from .minecraft', 'success');
+  } catch (err) {
+    toast(cleanError(err), 'error', 6000);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import';
+  }
+};
+
+function bindSettingsInputs() {
+  const s = state.settings;
+  $('set-resw').value = s.resW || '';
+  $('set-resh').value = s.resH || '';
+  $('set-fullscreen').checked = !!s.fullscreen;
+  $('set-minimize').checked = !!s.minimizeOnLaunch;
+  $('set-javaargs').value = s.javaArgs || '';
+}
+
 // ---------- skin editor ----------
 let skinViewer = null;
 let skinVariant = 'classic';
+let lastSkinData = null; // data URL of the currently loaded skin (for local model swaps)
 
 function skinStatus(msg) {
   $('skin-status').textContent = msg || '';
@@ -923,6 +971,79 @@ async function openSkinEditor() {
     skinViewer.zoom = 0.85;
   }
   await refreshSkin();
+  renderSkinLib();
+}
+
+// face thumbnail: base face (8,8,8,8) + hat overlay (40,8,8,8)
+function faceThumb(dataUrl) {
+  const c = document.createElement('canvas');
+  c.width = 104;
+  c.height = 104;
+  const img = new Image();
+  img.onload = () => {
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    g.drawImage(img, 8, 8, 8, 8, 0, 0, 104, 104);
+    g.drawImage(img, 40, 8, 8, 8, 0, 0, 104, 104);
+  };
+  img.src = dataUrl;
+  return c;
+}
+
+async function renderSkinLib() {
+  const lib = $('skin-lib');
+  const skins = await feather.listSavedSkins();
+  lib.innerHTML = '';
+  if (!skins.length) {
+    lib.innerHTML = '<p class="skin-hint">No saved skins yet — upload one or hit Save Current Skin.</p>';
+    return;
+  }
+  for (const s of skins) {
+    const item = document.createElement('div');
+    item.className = 'skin-item';
+    item.title = `Apply this skin (${s.variant})`;
+    item.appendChild(faceThumb(s.dataUrl));
+    const del = document.createElement('button');
+    del.className = 'skin-del';
+    del.textContent = '✕';
+    del.title = 'Remove from saved skins';
+    del.onclick = async (e) => {
+      e.stopPropagation();
+      await feather.deleteSavedSkin(s.id);
+      renderSkinLib();
+    };
+    item.appendChild(del);
+    item.onclick = async () => {
+      skinStatus('Applying skin...');
+      try {
+        await feather.applySavedSkin(s.id);
+        await refreshSkin();
+        skinStatus('Skin applied!');
+      } catch (err) {
+        skinStatus('');
+        toast(cleanError(err), 'error', 6000);
+      }
+    };
+    lib.appendChild(item);
+  }
+}
+
+$('skin-save-current').onclick = async () => {
+  skinStatus('Saving current skin...');
+  try {
+    await feather.saveCurrentSkin();
+    await renderSkinLib();
+    skinStatus('Saved.');
+  } catch (err) {
+    skinStatus('');
+    toast(cleanError(err), 'error');
+  }
+};
+
+function syncVariantPills() {
+  document.querySelectorAll('#skin-variant-pills .pill').forEach((p) => {
+    p.classList.toggle('active', p.dataset.variant === skinVariant);
+  });
 }
 
 async function refreshSkin() {
@@ -931,11 +1052,10 @@ async function refreshSkin() {
   try {
     const skin = await feather.getSkin();
     skinVariant = skin.variant;
-    document.querySelectorAll('#skin-variant-pills .pill').forEach((p) => {
-      p.classList.toggle('active', p.dataset.variant === skinVariant);
-    });
-    if (skin.skinData) {
-      await skinViewer.loadSkin(skin.skinData, { model: skinVariant === 'slim' ? 'slim' : 'default' });
+    lastSkinData = skin.skinData || null;
+    syncVariantPills();
+    if (lastSkinData) {
+      await skinViewer.loadSkin(lastSkinData, { model: skinVariant === 'slim' ? 'slim' : 'default' });
     }
     $('skin-sub').textContent = `${skin.name} · drag to rotate`;
   } catch (err) {
@@ -949,17 +1069,34 @@ $('skin-overlay').onclick = (e) => {
   if (e.target === $('skin-overlay')) $('skin-overlay').classList.add('hidden');
 };
 
+let variantBusy = false;
 document.querySelectorAll('#skin-variant-pills .pill').forEach((pill) => {
   pill.onclick = async () => {
-    if (pill.dataset.variant === skinVariant) return;
+    const next = pill.dataset.variant;
+    if (next === skinVariant || variantBusy) return;
+    variantBusy = true;
+    const prev = skinVariant;
+    skinVariant = next;
+    syncVariantPills(); // optimistic
     skinStatus('Switching model...');
+    // The skin bytes don't change — just re-render the 3D model locally,
+    // no network needed for the preview.
+    if (lastSkinData) {
+      try { await skinViewer.loadSkin(lastSkinData, { model: next === 'slim' ? 'slim' : 'default' }); } catch {}
+    }
     try {
-      await feather.setSkinVariant(pill.dataset.variant);
-      await refreshSkin();
+      await feather.setSkinVariant(next);
       skinStatus('Model updated.');
     } catch (err) {
+      skinVariant = prev; // roll back on failure
+      syncVariantPills();
+      if (lastSkinData) {
+        try { await skinViewer.loadSkin(lastSkinData, { model: prev === 'slim' ? 'slim' : 'default' }); } catch {}
+      }
       skinStatus('');
-      toast(cleanError(err), 'error');
+      toast(cleanError(err), 'error', 6000);
+    } finally {
+      variantBusy = false;
     }
   };
 });
@@ -973,6 +1110,7 @@ $('skin-upload').onclick = async () => {
   try {
     await feather.uploadSkin({ filePath: file, variant: skinVariant });
     await refreshSkin();
+    renderSkinLib();
     skinStatus('Skin updated! (Your in-launcher avatar may take a while to refresh.)');
     toast('Skin uploaded to your Minecraft account', 'success');
   } catch (err) {
@@ -983,11 +1121,91 @@ $('skin-upload').onclick = async () => {
   }
 };
 
+// ---------- auto-update ----------
+let updateReady = false;
+let updateChecking = false;
+
+function showUpdateCard() { $('update-card').classList.remove('hidden'); }
+function hideUpdateCard() { $('update-card').classList.add('hidden'); }
+
+feather.onUpdateAvailable(({ version }) => {
+  updateChecking = false;
+  $('update-title').textContent = `Update available — ${version}`;
+  $('update-desc').textContent = 'A newer version of Orbital is ready to install.';
+  $('update-progress-wrap').classList.add('hidden');
+  $('update-actions').classList.remove('hidden');
+  $('update-now').textContent = 'Update';
+  $('update-now').disabled = false;
+  showUpdateCard();
+});
+
+feather.onUpdateProgress(({ percent }) => {
+  $('update-progress-wrap').classList.remove('hidden');
+  $('update-progress-bar').style.width = `${percent}%`;
+  $('update-desc').textContent = `Downloading update... ${percent}%`;
+});
+
+feather.onUpdateReady(() => {
+  updateReady = true;
+  $('update-title').textContent = 'Update ready';
+  $('update-desc').textContent = 'Restart Orbital to finish installing.';
+  $('update-progress-wrap').classList.add('hidden');
+  $('update-actions').classList.remove('hidden');
+  $('update-now').textContent = 'Restart Now';
+  $('update-now').disabled = false;
+  showUpdateCard();
+});
+
+feather.onUpdateNone(() => {
+  updateChecking = false;
+  if (manualCheck) {
+    toast('You’re on the latest version', 'success');
+    manualCheck = false;
+  }
+});
+
+feather.onUpdateError(({ message }) => {
+  updateChecking = false;
+  if (manualCheck) {
+    toast('Update check failed: ' + message, 'error');
+    manualCheck = false;
+  }
+});
+
+$('update-now').onclick = () => {
+  if (updateReady) {
+    feather.installUpdate();
+    return;
+  }
+  $('update-now').disabled = true;
+  $('update-actions').classList.add('hidden');
+  $('update-progress-wrap').classList.remove('hidden');
+  $('update-desc').textContent = 'Starting download...';
+  feather.downloadUpdate();
+};
+$('update-later').onclick = hideUpdateCard;
+$('update-dismiss').onclick = hideUpdateCard;
+
+// manual check from Settings
+let manualCheck = false;
+const checkBtn = $('btn-check-update');
+if (checkBtn) {
+  checkBtn.onclick = async () => {
+    manualCheck = true;
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Checking...';
+    const res = await feather.checkUpdate();
+    setTimeout(() => { checkBtn.disabled = false; checkBtn.textContent = 'Check for Updates'; }, 1500);
+    if (res && res.error) { manualCheck = false; toast('Update check failed', 'error'); }
+  };
+}
+
 // ---------- init ----------
 (async function init() {
   state.settings = await feather.getSettings();
   ramSlider.value = state.settings.ram;
   $('ram-value').textContent = `${state.settings.ram} GB`;
+  bindSettingsInputs();
   state.selectedProfileId = state.settings.lastProfileId;
 
   await loadProfiles();

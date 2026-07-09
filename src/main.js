@@ -233,8 +233,52 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  setupAutoUpdater();
+});
 app.on('window-all-closed', () => app.quit());
+
+// ---------- auto-update (GitHub releases via electron-updater) ----------
+
+let updateState = 'idle'; // idle | checking | available | downloading | ready | none | error
+
+function setupAutoUpdater() {
+  if (!app.isPackaged) return; // updater can't run from source/dev
+  let autoUpdater;
+  try {
+    ({ autoUpdater } = require('electron-updater'));
+  } catch {
+    return;
+  }
+  autoUpdater.autoDownload = false;         // ask the user first
+  autoUpdater.allowPrerelease = true;       // our releases are betas
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    updateState = 'available';
+    send('update:available', { version: info.version, notes: typeof info.releaseNotes === 'string' ? info.releaseNotes : '' });
+  });
+  autoUpdater.on('update-not-available', () => { updateState = 'none'; send('update:none', {}); });
+  autoUpdater.on('download-progress', (p) => send('update:progress', { percent: Math.round(p.percent) }));
+  autoUpdater.on('update-downloaded', () => { updateState = 'ready'; send('update:ready', {}); });
+  autoUpdater.on('error', (err) => {
+    updateState = 'error';
+    console.log('[updater]', err && err.message);
+    send('update:error', { message: String(err && err.message || err) });
+  });
+
+  ipcMain.handle('update:check', async () => {
+    updateState = 'checking';
+    try { await autoUpdater.checkForUpdates(); } catch (e) { return { error: String(e.message || e) }; }
+    return { ok: true };
+  });
+  ipcMain.handle('update:download', async () => { updateState = 'downloading'; autoUpdater.downloadUpdate(); return true; });
+  ipcMain.handle('update:install', () => { autoUpdater.quitAndInstall(); });
+
+  // check shortly after launch
+  setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 3000);
+}
 
 ipcMain.on('win:minimize', () => win.minimize());
 ipcMain.on('win:maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
@@ -246,11 +290,16 @@ async function getMinecraftWithRetry(xbox) {
   let lastErr;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await xbox.getMinecraft();
+      const mc = await xbox.getMinecraft();
+      // A successful call can still hand back an incomplete profile (empty
+      // name/id) when Mojang's profile service hiccups — that's what causes
+      // the "default skin, no name" account chip. Treat it as retry-worthy.
+      if (mc && mc.profile && mc.profile.name && mc.profile.id) return mc;
+      lastErr = new Error('Incomplete Minecraft profile');
     } catch (err) {
       lastErr = err;
-      await new Promise((r) => setTimeout(r, 800));
     }
+    await new Promise((r) => setTimeout(r, 800));
   }
   throw lastErr;
 }
@@ -304,9 +353,19 @@ function mcAuthHeaders() {
   return { Authorization: `Bearer ${token.mcToken}` };
 }
 
+function mcErr(action, status) {
+  if (status === 429) return `${action} failed — Mojang is rate-limiting skin changes. Wait a minute and try again.`;
+  if (status === 401) return `${action} failed — your session expired. Sign out and back in.`;
+  return `${action} failed (${status})`;
+}
+
+// Cached so variant switches and "save current" don't re-hit Mojang every
+// time (their skin endpoints are aggressively rate-limited).
+let skinCache = null; // { name, uuid, skinUrl, variant, skinData }
+
 async function fetchSkinProfile() {
   const res = await fetch(MC_API, { headers: mcAuthHeaders() });
-  if (!res.ok) throw new Error(`Profile fetch failed (${res.status})`);
+  if (!res.ok) throw new Error(mcErr('Profile fetch', res.status));
   const data = await res.json();
   const active = (data.skins || []).find((s) => s.state === 'ACTIVE') || (data.skins || [])[0];
   return { name: data.name, uuid: data.id, skinUrl: active ? active.url : null, variant: active ? active.variant.toLowerCase() : 'classic' };
@@ -321,7 +380,8 @@ ipcMain.handle('skin:get', async () => {
     const res = await fetch(profile.skinUrl);
     if (res.ok) dataUrl = `data:image/png;base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}`;
   }
-  return { ...profile, skinData: dataUrl };
+  skinCache = { ...profile, skinData: dataUrl };
+  return skinCache;
 });
 
 ipcMain.handle('skin:pickFile', async () => {
@@ -333,26 +393,104 @@ ipcMain.handle('skin:pickFile', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
-ipcMain.handle('skin:upload', async (_e, { filePath, variant }) => {
-  const buf = await fsp.readFile(filePath);
+async function uploadSkinBuffer(buf, variant) {
   if (buf.length > 24576) throw new Error('Skin file too large — must be a 64x64 (or 64x32) PNG');
   const form = new FormData();
   form.append('variant', variant === 'slim' ? 'slim' : 'classic');
   form.append('file', new Blob([buf], { type: 'image/png' }), 'skin.png');
   const res = await fetch(`${MC_API}/skins`, { method: 'POST', headers: mcAuthHeaders(), body: form });
-  if (!res.ok) throw new Error(`Skin upload failed (${res.status}): ${(await res.text()).slice(0, 120)}`);
+  if (!res.ok) throw new Error(mcErr('Skin upload', res.status));
+  // Refresh the cache from the bytes we just uploaded, no extra API call.
+  skinCache = {
+    ...(skinCache || {}),
+    variant,
+    skinData: `data:image/png;base64,${buf.toString('base64')}`
+  };
+}
+
+ipcMain.handle('skin:upload', async (_e, { filePath, variant }) => {
+  const buf = await fsp.readFile(filePath);
+  await uploadSkinBuffer(buf, variant);
+  await addSkinToLib(buf, variant).catch(() => {});
+  return true;
+});
+
+// ---------- saved skin library (local, userData/skins) ----------
+
+const skinsDir = () => path.join(app.getPath('userData'), 'skins');
+const skinsFile = () => path.join(app.getPath('userData'), 'skins.json');
+
+async function addSkinToLib(buf, variant) {
+  const hash = crypto.createHash('sha1').update(buf).digest('hex');
+  const lib = readJson(skinsFile(), { skins: [] });
+  if (lib.skins.some((s) => s.id === hash)) return;
+  await fsp.mkdir(skinsDir(), { recursive: true });
+  await fsp.writeFile(path.join(skinsDir(), `${hash}.png`), buf);
+  lib.skins.push({ id: hash, variant, added: Date.now() });
+  writeJson(skinsFile(), lib);
+}
+
+ipcMain.handle('skins:list', async () => {
+  const lib = readJson(skinsFile(), { skins: [] });
+  const out = [];
+  for (const s of lib.skins) {
+    try {
+      const buf = await fsp.readFile(path.join(skinsDir(), `${s.id}.png`));
+      out.push({ ...s, dataUrl: `data:image/png;base64,${buf.toString('base64')}` });
+    } catch {}
+  }
+  return out.sort((a, b) => b.added - a.added);
+});
+
+ipcMain.handle('skins:saveCurrent', async () => {
+  // Prefer the cached skin bytes (no network); only fetch if we somehow
+  // don't have them yet.
+  if (skinCache && skinCache.skinData) {
+    const buf = Buffer.from(skinCache.skinData.split(',')[1], 'base64');
+    await addSkinToLib(buf, skinCache.variant);
+    return true;
+  }
+  const profile = await fetchSkinProfile();
+  if (!profile.skinUrl) throw new Error('No current skin to save');
+  const res = await fetch(profile.skinUrl);
+  if (!res.ok) throw new Error('Could not download current skin');
+  await addSkinToLib(Buffer.from(await res.arrayBuffer()), profile.variant);
+  return true;
+});
+
+ipcMain.handle('skins:apply', async (_e, id) => {
+  const lib = readJson(skinsFile(), { skins: [] });
+  const s = lib.skins.find((x) => x.id === id);
+  if (!s) throw new Error('Saved skin not found');
+  const buf = await fsp.readFile(path.join(skinsDir(), `${s.id}.png`));
+  await uploadSkinBuffer(buf, s.variant);
+  return true;
+});
+
+ipcMain.handle('skins:delete', async (_e, id) => {
+  const lib = readJson(skinsFile(), { skins: [] });
+  lib.skins = lib.skins.filter((x) => x.id !== id);
+  writeJson(skinsFile(), lib);
+  await fsp.unlink(path.join(skinsDir(), `${path.basename(id)}.png`)).catch(() => {});
   return true;
 });
 
 ipcMain.handle('skin:setVariant', async (_e, variant) => {
-  const profile = await fetchSkinProfile();
-  if (!profile.skinUrl) throw new Error('No current skin to change');
+  variant = variant === 'slim' ? 'slim' : 'classic';
+  // Use the cached skin URL; only reach out for the profile if we must.
+  let skinUrl = skinCache && skinCache.skinUrl;
+  if (!skinUrl) {
+    const profile = await fetchSkinProfile();
+    skinUrl = profile.skinUrl;
+  }
+  if (!skinUrl) throw new Error('No current skin to change');
   const res = await fetch(`${MC_API}/skins`, {
     method: 'POST',
     headers: { ...mcAuthHeaders(), 'Content-Type': 'application/json' },
-    body: JSON.stringify({ variant: variant === 'slim' ? 'slim' : 'classic', url: profile.skinUrl })
+    body: JSON.stringify({ variant, url: skinUrl })
   });
-  if (!res.ok) throw new Error(`Variant change failed (${res.status})`);
+  if (!res.ok) throw new Error(mcErr('Model change', res.status));
+  if (skinCache) skinCache.variant = variant;
   return true;
 });
 
@@ -492,6 +630,13 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
       }
     }
 
+    const s = currentSettings();
+    if (s.javaArgs) customArgs.push(...String(s.javaArgs).split(/\s+/).filter(Boolean));
+    const windowOpts = {};
+    if (s.fullscreen) windowOpts.fullscreen = true;
+    if (!s.fullscreen && Number(s.resW) > 0) windowOpts.width = Number(s.resW);
+    if (!s.fullscreen && Number(s.resH) > 0) windowOpts.height = Number(s.resH);
+
     const launcher = new Client();
     let started = false;
 
@@ -521,6 +666,7 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
     launcher.on('data', (d) => {
       const line = String(d).trim();
       if (line) console.log('[game]', line);
+      if (!started && s.minimizeOnLaunch && win && !win.isDestroyed()) win.minimize();
     });
     launcher.on('progress', (p) => {
       const percent = p.total ? Math.round((p.task / p.total) * 100) : 0;
@@ -537,6 +683,7 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
     launcher.on('close', (code) => {
       gameRunning = false;
       console.log('[game] exited with code', code);
+      if (s.minimizeOnLaunch && win && !win.isDestroyed() && win.isMinimized()) win.restore();
       send('launch:closed', { code });
     });
 
@@ -545,7 +692,8 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
       authorization: token.mclc(),
       javaPath,
       customArgs,
-      memory: { max: `${ram || 4}G`, min: '1G' }
+      memory: { max: `${ram || 4}G`, min: '1G' },
+      ...(Object.keys(windowOpts).length ? { window: windowOpts } : {})
     });
 
     send('launch:status', { stage: 'starting', percent: 100, message: 'Starting Minecraft...' });
@@ -1025,7 +1173,42 @@ ipcMain.handle('mods:remove', async (_e, { profileId, name }) => {
 
 // ---------- settings ----------
 
-const DEFAULT_SETTINGS = { ram: 4, lastVersion: null, lastLoader: 'vanilla', lastProfileId: null };
+const DEFAULT_SETTINGS = {
+  ram: 4,
+  resW: null,          // game window width (null = Minecraft default)
+  resH: null,
+  fullscreen: false,
+  minimizeOnLaunch: false,
+  javaArgs: '',        // extra JVM args, space-separated
+  lastVersion: null,
+  lastLoader: 'vanilla',
+  lastProfileId: null
+};
+
+function currentSettings() {
+  return { ...DEFAULT_SETTINGS, ...readJson(settingsFile(), {}) };
+}
+
+// Fold of the old "Import Old Data.bat": copies worlds/settings/packs from
+// .minecraft into the Orbital game folder. Never overwrites existing files.
+ipcMain.handle('data:import', async () => {
+  const src = path.join(app.getPath('appData'), '.minecraft');
+  if (!fs.existsSync(src)) throw new Error('No .minecraft folder found on this PC');
+  const dirs = ['saves', 'resourcepacks', 'shaderpacks', 'screenshots', 'config', 'xaero', 'schematics'];
+  const files = ['servers.dat', 'options.txt', 'optionsof.txt', 'optionsshaders.txt'];
+  for (const d of dirs) {
+    const from = path.join(src, d);
+    if (fs.existsSync(from)) {
+      await fsp.cp(from, path.join(GAME_ROOT, d), { recursive: true, force: false, errorOnExist: false });
+    }
+  }
+  for (const f of files) {
+    const from = path.join(src, f);
+    const to = path.join(GAME_ROOT, f);
+    if (fs.existsSync(from) && !fs.existsSync(to)) await fsp.copyFile(from, to);
+  }
+  return true;
+});
 
 ipcMain.handle('settings:get', () => ({ ...DEFAULT_SETTINGS, ...readJson(settingsFile(), {}) }));
 ipcMain.handle('settings:set', (_e, patch) => {

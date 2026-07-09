@@ -33,11 +33,26 @@ contextBridge.exposeInMainWorld('feather', {
   pickSkinFile: () => ipcRenderer.invoke('skin:pickFile'),
   uploadSkin: (opts) => ipcRenderer.invoke('skin:upload', opts),
   setSkinVariant: (variant) => ipcRenderer.invoke('skin:setVariant', variant),
+  listSavedSkins: () => ipcRenderer.invoke('skins:list'),
+  saveCurrentSkin: () => ipcRenderer.invoke('skins:saveCurrent'),
+  applySavedSkin: (id) => ipcRenderer.invoke('skins:apply', id),
+  deleteSavedSkin: (id) => ipcRenderer.invoke('skins:delete', id),
 
   // Settings
   getSettings: () => ipcRenderer.invoke('settings:get'),
   setSettings: (patch) => ipcRenderer.invoke('settings:set', patch),
   openFolder: (sub) => ipcRenderer.invoke('app:openFolder', sub),
+  importOldData: () => ipcRenderer.invoke('data:import'),
+
+  // Auto-update
+  checkUpdate: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+  onUpdateAvailable: (cb) => ipcRenderer.on('update:available', (_e, d) => cb(d)),
+  onUpdateProgress: (cb) => ipcRenderer.on('update:progress', (_e, d) => cb(d)),
+  onUpdateReady: (cb) => ipcRenderer.on('update:ready', (_e, d) => cb(d)),
+  onUpdateNone: (cb) => ipcRenderer.on('update:none', (_e, d) => cb(d)),
+  onUpdateError: (cb) => ipcRenderer.on('update:error', (_e, d) => cb(d)),
 
   // Window controls
   winMinimize: () => ipcRenderer.send('win:minimize'),

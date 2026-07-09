@@ -55,6 +55,16 @@
    handler), modern Forge launches. Legacy (<=1.12) skips both; 1.8.9 path
    still untested end-to-end. VERIFIED working on 26.2 (2026-07-09).
 
+11. **Auto-update** (electron-updater, GitHub provider, allowPrerelease=true
+    since releases are betas). Only runs when `app.isPackaged` — never in the
+    dev bat. CRITICAL: every `gh release create` MUST upload `dist/latest.yml`
+    ALONGSIDE the .exe, or installed apps can't detect the update. Build config
+    has a `publish` block so electron-builder generates latest.yml into dist/.
+    Auto-update activates from the NEXT release after the one that first
+    shipped the updater code (0.4.0-beta). Flow: check on launch (3s delay) →
+    update-available → in-app popup → user clicks → downloadUpdate →
+    update-downloaded → quitAndInstall. Manual "Check for Updates" in Settings.
+
 10. **Releases**: electron-builder NSIS, `perMachine`+`oneClick` → Program Files,
    UAC prompt Adam must click. Version comes from package.json (currently
    0.1.0-beta). gh CLI authed as AdamLlavelle. The initial commit message was
