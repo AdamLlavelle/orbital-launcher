@@ -183,16 +183,42 @@ async function downloadFile(url, dest, onProgress) {
 
 // ---------- Java runtime (auto-downloaded from Adoptium) ----------
 
+// The version manifest is cached in memory and on disk (30 min TTL). When the
+// network is down an expired disk copy is still used, so version lists and
+// profile creation keep working offline.
+const manifestCacheFile = () => path.join(app.getPath('userData'), 'manifest-cache.json');
+const MANIFEST_TTL = 30 * 60 * 1000;
+
 let versionManifestCache = null;
 async function getVersionManifest() {
-  if (!versionManifestCache) {
+  if (versionManifestCache) return versionManifestCache;
+  const disk = readJson(manifestCacheFile(), null);
+  if (disk && disk.data && Date.now() - disk.at < MANIFEST_TTL) {
+    versionManifestCache = disk.data;
+    return versionManifestCache;
+  }
+  try {
     versionManifestCache = await fetchJson('https://launchermeta.mojang.com/mc/game/version_manifest_v2.json');
+    writeJson(manifestCacheFile(), { at: Date.now(), data: versionManifestCache });
+  } catch (err) {
+    if (disk && disk.data) {
+      console.warn('[manifest] fetch failed, using stale disk cache:', err.message);
+      versionManifestCache = disk.data;
+    } else {
+      throw err;
+    }
   }
   return versionManifestCache;
 }
 
 // Mojang's per-version metadata declares the exact Java major it needs.
+// A version's requirement never changes, so resolved answers are cached
+// forever — repeat launches skip the metadata round-trip entirely.
+const javaMajorCacheFile = () => path.join(app.getPath('userData'), 'java-major-cache.json');
+
 async function javaMajorFor(mcVersion) {
+  const cached = readJson(javaMajorCacheFile(), {})[mcVersion];
+  if (cached) return cached;
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const manifest = await getVersionManifest();
@@ -200,7 +226,11 @@ async function javaMajorFor(mcVersion) {
       if (!entry) break; // unknown id — use heuristic
       const meta = await fetchJson(entry.url);
       if (meta.javaVersion && meta.javaVersion.majorVersion) {
-        return adoptiumMajor(meta.javaVersion.majorVersion);
+        const major = adoptiumMajor(meta.javaVersion.majorVersion);
+        const cache = readJson(javaMajorCacheFile(), {});
+        cache[mcVersion] = major;
+        writeJson(javaMajorCacheFile(), cache);
+        return major;
       }
       break;
     } catch (err) {
@@ -588,32 +618,47 @@ ipcMain.handle('mc:supportedVersions', async () => {
 
 // Advanced mode: the complete catalog per loader. Vanilla = every release;
 // Fabric/Forge = releases each loader's own metadata says it supports.
+// Loader support lists change rarely — cached on disk for a day, and the two
+// loader lookups run in parallel.
+const allVersionsFile = () => path.join(app.getPath('userData'), 'allversions-cache.json');
+const ALLVERSIONS_TTL = 24 * 60 * 60 * 1000;
+
 let allVersionsCache = null;
 
 ipcMain.handle('mc:allVersions', async () => {
   if (allVersionsCache) return allVersionsCache;
+  const disk = readJson(allVersionsFile(), null);
+  if (disk && disk.data && Date.now() - disk.at < ALLVERSIONS_TTL) {
+    allVersionsCache = disk.data;
+    return allVersionsCache;
+  }
+
   const manifest = await getVersionManifest();
   const releases = manifest.versions.filter((v) => v.type === 'release').map((v) => v.id);
 
-  let fabricList = [];
-  try {
-    const supported = await fabric.listSupportedVersions(); // meta.fabricmc.net
-    const set = new Set(supported.filter((v) => v.stable).map((v) => v.version));
-    fabricList = releases.filter((id) => set.has(id));
-  } catch (e) {
-    console.warn('[versions] fabric list failed:', e.message);
-  }
-
-  let forgeList = [];
-  try {
-    const supported = await forge.listSupportedVersions(); // forge maven metadata
-    const set = new Set(supported.map((v) => v.version));
-    forgeList = releases.filter((id) => set.has(id));
-  } catch (e) {
-    console.warn('[versions] forge list failed:', e.message);
-  }
+  const [fabricList, forgeList] = await Promise.all([
+    fabric.listSupportedVersions() // meta.fabricmc.net
+      .then((supported) => {
+        const set = new Set(supported.filter((v) => v.stable).map((v) => v.version));
+        return releases.filter((id) => set.has(id));
+      })
+      .catch((e) => {
+        console.warn('[versions] fabric list failed:', e.message);
+        return (disk && disk.data && disk.data.fabric) || [];
+      }),
+    forge.listSupportedVersions() // forge maven metadata
+      .then((supported) => {
+        const set = new Set(supported.map((v) => v.version));
+        return releases.filter((id) => set.has(id));
+      })
+      .catch((e) => {
+        console.warn('[versions] forge list failed:', e.message);
+        return (disk && disk.data && disk.data.forge) || [];
+      })
+  ]);
 
   allVersionsCache = { vanilla: releases, fabric: fabricList, forge: forgeList };
+  writeJson(allVersionsFile(), { at: Date.now(), data: allVersionsCache });
   return allVersionsCache;
 });
 
@@ -969,11 +1014,10 @@ async function installProject(projectId, mcVersion, loader, modsDir, seen, insta
   }
   await removeOtherVersions(v.project_id || projectId, modsDir, file.filename);
 
-  for (const dep of v.dependencies || []) {
-    if (dep.dependency_type === 'required' && dep.project_id) {
-      await installProject(dep.project_id, mcVersion, loader, modsDir, seen, installed);
-    }
-  }
+  // required dependencies download in parallel — `seen` is marked
+  // synchronously at entry, so overlapping trees never double-install
+  const deps = (v.dependencies || []).filter((d) => d.dependency_type === 'required' && d.project_id);
+  await Promise.all(deps.map((dep) => installProject(dep.project_id, mcVersion, loader, modsDir, seen, installed)));
 }
 
 // A profile should only ever hold one version of a given mod — remove any
@@ -1049,11 +1093,9 @@ async function cfInstallProject(modId, mcVersion, modsDir, seen, installed, file
     if (otherNames.has(base)) await fsp.unlink(path.join(modsDir, f)).catch(() => {});
   }
 
-  for (const dep of file.dependencies || []) {
-    if (dep.relationType === 3 && dep.modId) { // required dependency
-      await cfInstallProject(dep.modId, mcVersion, modsDir, seen, installed);
-    }
-  }
+  // required dependencies (relationType 3) download in parallel
+  const deps = (file.dependencies || []).filter((d) => d.relationType === 3 && d.modId);
+  await Promise.all(deps.map((dep) => cfInstallProject(dep.modId, mcVersion, modsDir, seen, installed)));
 }
 
 // Map CurseForge's category list onto the launcher's friendly filter labels.

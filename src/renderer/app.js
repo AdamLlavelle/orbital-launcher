@@ -1274,9 +1274,9 @@ async function boot() {
   bindSettingsInputs();
   state.selectedProfileId = state.settings.lastProfileId;
 
-  await loadProfiles();
-
-  const profile = await feather.restore();
+  // Profiles and the Microsoft session refresh don't depend on each other —
+  // loading them in parallel shaves the slow network hop off perceived boot.
+  const [, profile] = await Promise.all([loadProfiles(), feather.restore()]);
   if (profile) {
     state.profile = profile;
     showApp();
