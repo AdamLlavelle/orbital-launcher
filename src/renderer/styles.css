@@ -506,6 +506,38 @@ html, body {
 .ghost-button.danger { color: var(--red); border-color: rgba(229, 83, 75, 0.4); }
 .ghost-button.danger:hover { background: rgba(229, 83, 75, 0.12); }
 
+/* ---------- Boot error + inline error notes ---------- */
+
+.boot-error {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.boot-error-box {
+  max-width: 420px;
+  padding: 32px;
+  text-align: center;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.boot-error-box h2 { margin-bottom: 10px; }
+.boot-error-box p { color: var(--muted); margin-bottom: 18px; }
+
+.error-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 16px;
+  text-align: center;
+}
+.error-note p { color: var(--muted); }
+
 /* ---------- Version badge ---------- */
 
 .version-badge {

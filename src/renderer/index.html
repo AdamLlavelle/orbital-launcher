@@ -397,6 +397,15 @@
 
   <div id="toast-container" class="toast-container"></div>
   <div id="version-badge" class="version-badge"></div>
+
+  <!-- Boot failure screen (shown only if init itself throws) -->
+  <div id="boot-error" class="boot-error hidden">
+    <div class="boot-error-box">
+      <h2>Orbital couldn't start</h2>
+      <p id="boot-error-msg"></p>
+      <button id="boot-retry" class="accent-button">Retry</button>
+    </div>
+  </div>
   <script src="vendor/skinview3d.bundle.js"></script>
   <script src="app.js"></script>
 </body>

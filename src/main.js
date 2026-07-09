@@ -65,6 +65,11 @@ let win = null;
 let token = null; // active msmc Minecraft token
 let gameRunning = false;
 
+// Last-resort logging: anything that slips every handler still lands in the
+// log file instead of silently killing the process.
+process.on('uncaughtException', (err) => console.error('[main] uncaught:', err));
+process.on('unhandledRejection', (err) => console.error('[main] unhandled rejection:', err));
+
 const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 const authFile = () => path.join(app.getPath('userData'), 'auth.json');
 const profilesFile = () => path.join(app.getPath('userData'), 'profiles.json');
@@ -94,35 +99,86 @@ function profileOf(mcToken) {
   return { name: mcToken.profile.name, uuid: mcToken.profile.id };
 }
 
+// Network failures surface as cryptic fetch/undici errors ("fetch failed",
+// ENOTFOUND...). Translate them into something a person can act on; the raw
+// error still goes to the log.
+function isNetworkError(err) {
+  const m = String((err && err.cause && err.cause.message) || (err && err.message) || err);
+  return /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|UND_ERR|fetch failed|network/i.test(m);
+}
+
+function serviceName(url) {
+  try {
+    const h = new URL(url).hostname;
+    if (h.includes('modrinth')) return 'Modrinth';
+    if (h.includes('curse') || h.includes('forgecdn')) return 'CurseForge';
+    if (h.includes('mojang') || h.includes('minecraftservices') || h.includes('minecraft.net')) return 'Mojang';
+    if (h.includes('adoptium')) return 'the Java download service';
+    if (h.includes('bangbang93')) return 'the OptiFine mirror';
+    if (h.includes('fabricmc')) return 'Fabric';
+    if (h.includes('minecraftforge')) return 'Forge';
+    return h;
+  } catch {
+    return 'the server';
+  }
+}
+
 async function fetchJson(url, opts = {}) {
-  const res = await fetch(url, {
-    ...opts,
-    headers: { 'User-Agent': MODRINTH_UA, ...(opts.headers || {}) }
-  });
-  if (!res.ok) throw new Error(`Request failed (${res.status}): ${url}`);
+  let res;
+  try {
+    res = await fetch(url, {
+      ...opts,
+      headers: { 'User-Agent': MODRINTH_UA, ...(opts.headers || {}) }
+    });
+  } catch (err) {
+    console.warn('[net]', url, String((err && err.message) || err));
+    if (isNetworkError(err)) throw new Error(`Can't reach ${serviceName(url)} — check your internet connection and try again.`);
+    throw err;
+  }
+  if (!res.ok) {
+    console.warn('[net]', res.status, url);
+    throw new Error(`${serviceName(url)} returned an error (HTTP ${res.status}). Try again in a moment.`);
+  }
   return res.json();
 }
 
 async function downloadFile(url, dest, onProgress) {
-  const res = await fetch(url, { headers: { 'User-Agent': MODRINTH_UA } });
-  if (!res.ok) throw new Error(`Download failed (${res.status}): ${url}`);
+  let res;
+  try {
+    res = await fetch(url, { headers: { 'User-Agent': MODRINTH_UA } });
+  } catch (err) {
+    console.warn('[net]', url, String((err && err.message) || err));
+    if (isNetworkError(err)) throw new Error(`Download failed — can't reach ${serviceName(url)}. Check your internet connection.`);
+    throw err;
+  }
+  if (!res.ok) throw new Error(`Download from ${serviceName(url)} failed (HTTP ${res.status}). Try again in a moment.`);
   const total = Number(res.headers.get('content-length')) || 0;
   await fsp.mkdir(path.dirname(dest), { recursive: true });
-  await new Promise((resolve, reject) => {
-    const rs = Readable.fromWeb(res.body);
-    const ws = fs.createWriteStream(dest);
-    let done = 0;
-    if (onProgress && total) {
-      rs.on('data', (c) => {
-        done += c.length;
-        onProgress(done / total);
-      });
-    }
-    rs.on('error', reject);
-    ws.on('error', reject);
-    ws.on('finish', resolve);
-    rs.pipe(ws);
-  });
+  // Write to a temp name and rename on success — an interrupted download must
+  // never leave a half-written file that later passes "already installed"
+  // existence checks.
+  const tmp = `${dest}.part`;
+  try {
+    await new Promise((resolve, reject) => {
+      const rs = Readable.fromWeb(res.body);
+      const ws = fs.createWriteStream(tmp);
+      let done = 0;
+      if (onProgress && total) {
+        rs.on('data', (c) => {
+          done += c.length;
+          onProgress(done / total);
+        });
+      }
+      rs.on('error', reject);
+      ws.on('error', reject);
+      ws.on('finish', resolve);
+      rs.pipe(ws);
+    });
+    await fsp.rename(tmp, dest);
+  } catch (err) {
+    await fsp.unlink(tmp).catch(() => {});
+    throw err;
+  }
 }
 
 // ---------- Java runtime (auto-downloaded from Adoptium) ----------

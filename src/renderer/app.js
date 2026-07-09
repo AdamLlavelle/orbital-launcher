@@ -53,6 +53,29 @@ function cleanError(err) {
   return String(err && err.message ? err.message : err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
 }
 
+// Inline error block with an optional Retry button — used wherever a list
+// would otherwise silently stay empty or stuck on "Loading...".
+function errorNote(message, retry) {
+  const wrap = document.createElement('div');
+  wrap.className = 'error-note';
+  const p = document.createElement('p');
+  p.textContent = message;
+  wrap.appendChild(p);
+  if (retry) {
+    const b = document.createElement('button');
+    b.className = 'ghost-button';
+    b.textContent = 'Retry';
+    b.onclick = retry;
+    wrap.appendChild(b);
+  }
+  return wrap;
+}
+
+// ---------- connectivity ----------
+window.addEventListener('offline', () =>
+  toast("You're offline — browsing and installing won't work until you reconnect.", 'error', 6000));
+window.addEventListener('online', () => toast('Back online', 'success'));
+
 // ---------- navigation ----------
 function gotoPage(page) {
   document.querySelectorAll('.nav-tab').forEach((b) => b.classList.toggle('active', b.dataset.page === page));
@@ -236,7 +259,7 @@ async function renderProfilesPage() {
     if (p.loader !== 'vanilla') {
       feather.listMods(p.id).then((mods) => {
         info.textContent = line(mods.length);
-      });
+      }).catch(() => {}); // count is cosmetic — never break the card over it
     }
 
     const actions = document.createElement('div');
@@ -355,9 +378,9 @@ $('btn-new-profile').onclick = async () => {
     try {
       const { versions } = await feather.getSupportedVersions();
       supportedVersions = versions;
-    } catch {
-      supportedVersions = [];
-      toast('Could not load the version list — check your connection.', 'error');
+    } catch (err) {
+      // stays null so the next wizard open retries instead of caching failure
+      toast(cleanError(err), 'error');
     }
   }
   renderWizardLoaderPills();
@@ -406,6 +429,19 @@ advCheck.onchange = async () => {
 function renderVersionOptions() {
   const list = $('np-version-list');
   list.innerHTML = '';
+  if (!advancedMode && !supportedVersions) {
+    // the fetch failed when the wizard opened — offer an in-place retry
+    list.appendChild(errorNote("Couldn't load the version list.", async () => {
+      try {
+        const { versions } = await feather.getSupportedVersions();
+        supportedVersions = versions;
+      } catch (err) {
+        toast(cleanError(err), 'error');
+      }
+      renderVersionOptions();
+    }));
+    return;
+  }
   const rows = advancedMode
     ? ((allVersions && allVersions[wizardLoader]) || []).map((id) => ({ id, line: id }))
     : (supportedVersions || []).filter((v) => v.loaders.includes(wizardLoader));
@@ -537,8 +573,8 @@ async function fetchModPage() {
     renderPager(total);
   } catch (err) {
     resultsEl.innerHTML = '';
+    resultsEl.appendChild(errorNote(cleanError(err), fetchModPage));
     renderPager(0);
-    toast(cleanError(err), 'error');
   } finally {
     btn.disabled = false;
   }
@@ -730,7 +766,7 @@ async function openVersionDrawer(hit) {
     });
   } catch (err) {
     listEl.innerHTML = '';
-    toast(cleanError(err), 'error');
+    listEl.appendChild(errorNote(cleanError(err), () => openVersionDrawer(hit)));
   }
 }
 
@@ -747,7 +783,15 @@ async function loadInstalledMods() {
   if (!p) return;
   const listEl = $('installed-mods');
   listEl.innerHTML = '<p class="empty-note">Loading mods...</p>';
-  const mods = await feather.listMods(p.id, true); // with Modrinth metadata
+  let mods;
+  try {
+    mods = await feather.listMods(p.id, true); // with Modrinth metadata
+  } catch (err) {
+    if (state.viewProfile !== p) return;
+    listEl.innerHTML = '';
+    listEl.appendChild(errorNote(cleanError(err), loadInstalledMods));
+    return;
+  }
   if (state.viewProfile !== p) return; // user navigated away meanwhile
   $('installed-title').textContent = `Installed mods (${mods.length})`;
   listEl.innerHTML = '';
@@ -827,8 +871,12 @@ async function loadInstalledMods() {
     trash.title = 'Uninstall mod';
     trash.innerHTML = TRASH_SVG;
     trash.onclick = async () => {
-      await feather.removeMod({ profileId: p.id, name: mod.name });
-      toast(`Removed ${titleText.textContent}`, 'success');
+      try {
+        await feather.removeMod({ profileId: p.id, name: mod.name });
+        toast(`Removed ${titleText.textContent}`, 'success');
+      } catch (err) {
+        toast(cleanError(err), 'error');
+      }
       loadInstalledMods();
       renderProfilesPage();
     };
@@ -1009,7 +1057,11 @@ async function renderSkinLib() {
     del.title = 'Remove from saved skins';
     del.onclick = async (e) => {
       e.stopPropagation();
-      await feather.deleteSavedSkin(s.id);
+      try {
+        await feather.deleteSavedSkin(s.id);
+      } catch (err) {
+        toast(cleanError(err), 'error');
+      }
       renderSkinLib();
     };
     item.appendChild(del);
@@ -1215,8 +1267,7 @@ if (checkBtn) {
 }
 
 // ---------- init ----------
-(async function init() {
-  feather.getAppVersion().then((v) => { $('version-badge').textContent = `v${v}`; }).catch(() => {});
+async function boot() {
   state.settings = await feather.getSettings();
   ramSlider.value = state.settings.ram;
   $('ram-value').textContent = `${state.settings.ram} GB`;
@@ -1231,5 +1282,26 @@ if (checkBtn) {
     showApp();
   } else {
     showLogin();
+  }
+}
+
+(async function init() {
+  feather.getAppVersion().then((v) => { $('version-badge').textContent = `v${v}`; }).catch(() => {});
+  $('boot-retry').onclick = async () => {
+    $('boot-error').classList.add('hidden');
+    try {
+      await boot();
+    } catch (err) {
+      $('boot-error-msg').textContent = cleanError(err);
+      $('boot-error').classList.remove('hidden');
+    }
+  };
+  try {
+    await boot();
+  } catch (err) {
+    // Without this, a single startup failure = permanent blank window.
+    console.error('boot failed:', err);
+    $('boot-error-msg').textContent = cleanError(err);
+    $('boot-error').classList.remove('hidden');
   }
 })();
