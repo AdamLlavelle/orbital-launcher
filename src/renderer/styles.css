@@ -113,19 +113,38 @@ html, body {
   height: 100%;
 }
 
-.win-controls { display: flex; height: 100%; -webkit-app-region: no-drag; }
+.win-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding: 0 8px 0 4px;
+  -webkit-app-region: no-drag;
+}
 
 .win-controls button {
-  width: 46px;
-  height: 100%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
+  border-radius: 9px;
   background: transparent;
   color: var(--muted);
-  font-size: 12px;
   cursor: pointer;
 }
-.win-controls button:hover { background: var(--bg-hover); color: var(--text); }
-.win-controls button.close:hover { background: var(--red); color: #fff; }
+.win-controls button svg { width: 13px; height: 13px; display: block; }
+.win-controls button:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+  box-shadow: 0 0 10px rgba(79, 140, 255, 0.18), inset 0 0 0 1px var(--border);
+}
+.win-controls button.close:hover {
+  background: rgba(229, 83, 75, 0.92);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(229, 83, 75, 0.45);
+}
 
 /* ---------- Login ---------- */
 
