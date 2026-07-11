@@ -35,7 +35,8 @@ Phase B list — modpacks held back per Adam).
   ADAM'S CALL 2026-07-10: this replaces modpack import/export (modpacks HELD
   BACK — don't build without asking him). Import button = .solid-button
   (neutral sibling of accent).
-- Mod update indicators + Update All
+- [x] Mod update indicators + Update All — built 2026-07-11 (Modrinth batched
+  hash lookup + CF per-mod; preserves disabled state). Awaiting Adam's test.
 - Profile duplication, custom icons, per-profile RAM/args/resolution
 - Multi-account switching (+ offline accounts)
 
