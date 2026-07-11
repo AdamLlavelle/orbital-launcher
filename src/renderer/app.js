@@ -297,22 +297,72 @@ async function renderProfilesPage() {
 }
 
 // --- profile detail view ---
-// update info per mod, keyed by base filename (without .disabled) — set by
-// the Check for updates button, cleared when a different profile opens
+// update info per mod, keyed by base filename (without .disabled) — filled
+// by the automatic check that runs when a profile's detail view opens
 let modUpdates = null;
+let updatesCheckedFor = null; // profile id the current modUpdates belongs to
 
-function resetUpdateButton() {
+function resetUpdateState() {
   modUpdates = null;
-  const btn = $('btn-mod-updates');
-  btn.textContent = 'Check for updates';
-  btn.classList.remove('has-updates');
-  btn.dataset.mode = '';
+  updatesCheckedFor = null;
+  $('mod-update-status').classList.add('hidden');
+  const btn = $('btn-update-all');
+  btn.classList.add('hidden');
   btn.disabled = false;
+  btn.textContent = 'Update all';
+}
+
+function renderUpdateStatus() {
+  const status = $('mod-update-status');
+  const btn = $('btn-update-all');
+  const n = modUpdates ? Object.values(modUpdates).filter((u) => u.updateAvailable).length : 0;
+  status.classList.remove('hidden');
+  if (n) {
+    status.textContent = `${n} update${n === 1 ? '' : 's'} available`;
+    status.classList.add('avail');
+    btn.classList.remove('hidden');
+  } else {
+    status.textContent = '✓ Up to date';
+    status.classList.remove('avail');
+    btn.classList.add('hidden');
+  }
+}
+
+// Kicks off the background update check the first time a profile's mods are
+// listed; later list refreshes (toggle/remove) reuse the cached result.
+async function maybeAutoCheckUpdates(p, mods) {
+  const status = $('mod-update-status');
+  if (p.loader === 'vanilla' || !mods.length) {
+    status.classList.add('hidden');
+    $('btn-update-all').classList.add('hidden');
+    return;
+  }
+  if (updatesCheckedFor === p.id && modUpdates) {
+    renderUpdateStatus();
+    return;
+  }
+  updatesCheckedFor = p.id;
+  status.classList.remove('hidden', 'avail');
+  status.textContent = 'Checking for updates...';
+  $('btn-update-all').classList.add('hidden');
+  try {
+    const updates = await feather.checkModUpdates(p.id);
+    if (state.viewProfile !== p || updatesCheckedFor !== p.id) return;
+    modUpdates = Object.fromEntries(updates.map((u) => [u.base, u]));
+    renderUpdateStatus();
+    if (updates.some((u) => u.updateAvailable)) loadInstalledMods(); // paint row badges
+  } catch {
+    // quiet failure — the status chip just disappears; reopening retries
+    if (state.viewProfile === p) {
+      status.classList.add('hidden');
+      updatesCheckedFor = null;
+    }
+  }
 }
 
 function openProfileDetail(profile) {
   state.viewProfile = profile;
-  resetUpdateButton();
+  resetUpdateState();
   closeDrawer();
   $('profiles-view').classList.add('hidden');
   $('browse-view').classList.add('hidden');
@@ -861,7 +911,7 @@ async function loadInstalledMods() {
   }
   if (state.viewProfile !== p) return; // user navigated away meanwhile
   $('installed-title').textContent = `Installed mods (${mods.length})`;
-  $('btn-mod-updates').classList.toggle('hidden', p.loader === 'vanilla' || !mods.length);
+  maybeAutoCheckUpdates(p, mods);
   listEl.innerHTML = '';
   if (!mods.length) {
     listEl.innerHTML = p.loader === 'vanilla'
@@ -963,57 +1013,27 @@ async function loadInstalledMods() {
   }
 }
 
-$('btn-mod-updates').onclick = async () => {
+$('btn-update-all').onclick = async () => {
   const p = state.viewProfile;
   if (!p) return;
-  const btn = $('btn-mod-updates');
-
-  // second click, after a check found updates: run Update all
-  if (btn.dataset.mode === 'update') {
-    btn.disabled = true;
-    btn.textContent = 'Updating...';
-    try {
-      const res = await feather.updateAllMods(p.id);
-      if (res.updated.length) {
-        toast(`Updated ${res.updated.length} mod${res.updated.length === 1 ? '' : 's'}`, 'success');
-      }
-      if (res.failed.length) {
-        toast(`Couldn't update ${res.failed.map((f) => f.name).join(', ')}`, 'error', 7000);
-      }
-      resetUpdateButton();
-      loadInstalledMods();
-      renderProfilesPage();
-    } catch (err) {
-      toast(cleanError(err), 'error', 6000);
-      btn.disabled = false;
-      btn.textContent = 'Update all';
-    }
-    return;
-  }
-
+  const btn = $('btn-update-all');
   btn.disabled = true;
-  btn.textContent = 'Checking...';
+  btn.textContent = 'Updating...';
   try {
-    const updates = await feather.checkModUpdates(p.id);
-    if (state.viewProfile !== p) return;
-    modUpdates = Object.fromEntries(updates.map((u) => [u.base, u]));
-    const n = updates.filter((u) => u.updateAvailable).length;
-    if (n) {
-      btn.dataset.mode = 'update';
-      btn.textContent = `Update all (${n})`;
-      btn.classList.add('has-updates');
-    } else {
-      btn.textContent = 'Everything up to date';
-      setTimeout(() => {
-        if (state.viewProfile === p && btn.dataset.mode !== 'update') resetUpdateButton();
-      }, 3000);
+    const res = await feather.updateAllMods(p.id);
+    if (res.updated.length) {
+      toast(`Updated ${res.updated.length} mod${res.updated.length === 1 ? '' : 's'}`, 'success');
     }
-    loadInstalledMods(); // re-render rows so update badges appear
+    if (res.failed.length) {
+      toast(`Couldn't update ${res.failed.map((f) => f.name).join(', ')}`, 'error', 7000);
+    }
+    resetUpdateState();
+    loadInstalledMods(); // triggers a fresh auto-check → "Up to date"
+    renderProfilesPage();
   } catch (err) {
     toast(cleanError(err), 'error', 6000);
-    btn.textContent = 'Check for updates';
-  } finally {
     btn.disabled = false;
+    btn.textContent = 'Update all';
   }
 };
 
