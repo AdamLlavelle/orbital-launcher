@@ -1167,7 +1167,7 @@ function profileIconFile(id) {
   return null;
 }
 
-ipcMain.handle('profiles:pickIcon', async (_e, id) => {
+async function pickImageFile() {
   const result = await dialog.showOpenDialog(win, {
     title: 'Choose a profile image',
     filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }],
@@ -1180,8 +1180,30 @@ ipcMain.handle('profiles:pickIcon', async (_e, id) => {
   let ext = path.extname(src).toLowerCase();
   if (ext === '.jpeg') ext = '.jpg';
   if (!ICON_MIME[ext]) throw new Error('Pick a PNG, JPG, GIF or WebP image');
-  await setProfileIcon(id, await fsp.readFile(src), ext);
+  return { buf: await fsp.readFile(src), ext };
+}
+
+ipcMain.handle('profiles:pickIcon', async (_e, id) => {
+  const picked = await pickImageFile();
+  if (!picked) return null;
+  await setProfileIcon(id, picked.buf, picked.ext);
   return loadProfileIcons()[id] || null;
+});
+
+// pick an image before a profile exists (the creation wizard) — returns a
+// data URL the renderer holds onto until the profile id is known
+ipcMain.handle('icon:pickFile', async () => {
+  const picked = await pickImageFile();
+  if (!picked) return null;
+  return `data:${ICON_MIME[picked.ext]};base64,${picked.buf.toString('base64')}`;
+});
+
+ipcMain.handle('profiles:setIconData', async (_e, { id, dataUrl }) => {
+  const m = /^data:image\/(png|jpeg|gif|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(dataUrl || ''));
+  if (!m) throw new Error('Bad image data');
+  const ext = m[1] === 'jpeg' ? '.jpg' : `.${m[1]}`;
+  await setProfileIcon(id, Buffer.from(m[2], 'base64'), ext);
+  return true;
 });
 
 ipcMain.handle('profiles:removeIcon', async (_e, id) => {

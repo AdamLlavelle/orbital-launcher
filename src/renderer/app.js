@@ -396,17 +396,18 @@ function openProfileDetail(profile) {
   loadInstalledMods();
 }
 
-// --- profile image (click = set/change, right-click = remove) ---
+// --- profile image (click = set/change, ✕ chip or right-click = remove) ---
 function renderDetailIcon(profile) {
   const el = $('detail-icon');
   const url = state.icons && state.icons[profile.id];
   el.innerHTML = '';
   el.classList.toggle('has-image', !!url);
+  $('detail-icon-remove').classList.toggle('hidden', !url);
   if (url) {
     const img = document.createElement('img');
     img.src = url;
     el.appendChild(img);
-    el.title = 'Click to change image · right-click to remove';
+    el.title = 'Click to change image';
   } else {
     el.textContent = '+';
     el.title = 'Add a profile image';
@@ -430,8 +431,7 @@ $('detail-icon').onclick = async () => {
   }
 };
 
-$('detail-icon').oncontextmenu = async (e) => {
-  e.preventDefault();
+async function removeDetailIcon() {
   const p = state.viewProfile;
   if (!p || !(state.icons && state.icons[p.id])) return;
   try {
@@ -444,6 +444,12 @@ $('detail-icon').oncontextmenu = async (e) => {
   } catch (err) {
     toast(cleanError(err), 'error');
   }
+}
+
+$('detail-icon-remove').onclick = removeDetailIcon;
+$('detail-icon').oncontextmenu = (e) => {
+  e.preventDefault();
+  removeDetailIcon();
 };
 
 $('btn-back-list').onclick = showProfilesView;
@@ -514,6 +520,40 @@ let wizardVersion = null;     // version id picked in step 2
 let supportedVersions = null; // curated: [{ id, line, loaders }]
 let allVersions = null;       // advanced: { vanilla: [], fabric: [], forge: [] }
 let advancedMode = false;
+let wizardIconData = null;    // data URL picked in step 1, applied after create
+
+function renderWizardIcon() {
+  const el = $('np-icon');
+  el.innerHTML = '';
+  el.classList.toggle('has-image', !!wizardIconData);
+  $('np-icon-remove').classList.toggle('hidden', !wizardIconData);
+  if (wizardIconData) {
+    const img = document.createElement('img');
+    img.src = wizardIconData;
+    el.appendChild(img);
+    el.title = 'Click to change image';
+  } else {
+    el.textContent = '+';
+    el.title = 'Add a profile image';
+  }
+}
+
+$('np-icon').onclick = async () => {
+  try {
+    const dataUrl = await feather.pickIconFile();
+    if (dataUrl) {
+      wizardIconData = dataUrl;
+      renderWizardIcon();
+    }
+  } catch (err) {
+    toast(cleanError(err), 'error', 6000);
+  }
+};
+
+$('np-icon-remove').onclick = () => {
+  wizardIconData = null;
+  renderWizardIcon();
+};
 
 function setWizardStep(step) {
   wizardStep = step;
@@ -546,6 +586,8 @@ $('btn-new-profile').onclick = async () => {
   $('np-name').value = '';
   $('np-desc').value = '';
   updateWizardPreview();
+  wizardIconData = null;
+  renderWizardIcon();
   wizardVersion = null;
   wizardLoader = 'fabric';
   advancedMode = false;
@@ -667,6 +709,9 @@ $('np-create').onclick = async () => {
       version: wizardVersion,
       loader: wizardLoader
     });
+    if (wizardIconData) {
+      await feather.setProfileIconData({ id: created.id, dataUrl: wizardIconData }).catch(() => {});
+    }
     modal.classList.add('hidden');
     await loadProfiles();
     selectProfile(created.id);

@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('feather', {
   importProfile: () => ipcRenderer.invoke('profiles:import'),
   pickProfileIcon: (id) => ipcRenderer.invoke('profiles:pickIcon', id),
   removeProfileIcon: (id) => ipcRenderer.invoke('profiles:removeIcon', id),
+  pickIconFile: () => ipcRenderer.invoke('icon:pickFile'),
+  setProfileIconData: (opts) => ipcRenderer.invoke('profiles:setIconData', opts),
 
   // Modrinth
   searchMods: (opts) => ipcRenderer.invoke('modrinth:search', opts),

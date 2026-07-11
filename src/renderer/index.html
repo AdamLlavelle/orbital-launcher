@@ -143,7 +143,10 @@
         <div id="profile-detail-view" class="hidden">
           <div class="page-header">
             <button id="btn-back-list" class="ghost-button back-btn">&larr; Profiles</button>
-            <button id="detail-icon" class="detail-icon" title="Add a profile image"></button>
+            <div class="pic-wrap">
+              <button id="detail-icon" class="detail-icon" title="Add a profile image"></button>
+              <button id="detail-icon-remove" class="pic-remove hidden" title="Remove image">&#x2715;</button>
+            </div>
             <h2 id="detail-name">Profile</h2>
             <span id="detail-badge" class="loader-badge"></span>
             <span class="context-chip" id="detail-version"></span>
@@ -317,6 +320,12 @@
             <div class="field-wrap">
               <textarea id="np-desc" rows="4" placeholder="What's this profile for? Mods, servers, a vibe..." maxlength="140"></textarea>
               <span class="char-count" id="np-desc-count">140</span>
+            </div>
+
+            <label class="modal-label">Image <span class="optional-hint">(optional)</span></label>
+            <div class="pic-wrap">
+              <button id="np-icon" class="detail-icon" title="Add a profile image"></button>
+              <button id="np-icon-remove" class="pic-remove hidden" title="Remove image">&#x2715;</button>
             </div>
           </div>
 
