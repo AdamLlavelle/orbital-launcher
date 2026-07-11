@@ -2,6 +2,31 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.5.0-beta — 2026-07-09
+
+### Added
+- **Crash diagnostics**: when Minecraft crashes, Orbital now explains why in
+  plain English (out of memory, duplicate mods, missing dependencies,
+  incompatible mods, and more) with a one-click **Copy Log** button.
+- **Offline support**: version lists and profiles now work without internet
+  (cached locally). Clear "you're offline" messages instead of cryptic errors.
+- Loading animations everywhere — mod browser, installed mods, version
+  picker, and skin library show smooth placeholders instead of blank panels.
+- Version number shown in the top bar next to the logo.
+
+### Changed
+- Redesigned minimize/maximize/close buttons.
+- Faster startup (parallel loading) and faster repeat launches (cached
+  version data). Mod dependencies now download in parallel.
+
+### Fixed
+- Interrupted downloads no longer leave broken half-files that look installed.
+- Network errors now say what actually went wrong ("Can't reach Modrinth —
+  check your connection") instead of showing raw URLs and status codes.
+- A startup failure now shows an error screen with a Retry button instead of
+  a blank window.
+- Failed lists (mods, versions) show a Retry button instead of staying empty.
+
 ## 0.4.0-beta — 2026-07-09
 
 ### Added
