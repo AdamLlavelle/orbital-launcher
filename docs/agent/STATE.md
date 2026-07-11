@@ -9,12 +9,12 @@ Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Lau
 Built entirely by AI, directed by Adam (attribution in README + releases).
 
 ## Mission: step-07 "the real deal" (plan approved, see steps/step-07.md)
-Phase A (bulletproof) CODE DONE 2026-07-09: error audit, skeletons, perf
-caches, crash diagnostics. Awaiting Adam's "ship it" for 0.5.0-beta.
-Then Phase B (modpacks, update-all, multi-account), Phase C (dashboard,
-onboarding). Adam's rules: proceed freely in-phase; ask only for structural
-changes (new deps, redesigns, schema changes). Tiny version badge added
-(bottom-left, renderer #version-badge).
+Phase A (bulletproof) SHIPPED as 0.5.0-beta on 2026-07-10. Next = Phase B
+(modpack import/export ← flagship, mod update-all, profile dup/icons/
+per-profile settings, multi-account), then Phase C (dashboard, onboarding).
+Adam's rules: proceed freely in-phase; ask only for structural changes (new
+deps, redesigns, schema changes). Version badge lives in the TOP BAR next to
+the brand (Adam rejected a floating bottom overlay — it overlapped content).
 
 ## Working & verified
 - Microsoft sign-in (msmc, persistent, empty-profile retry guard)
@@ -36,13 +36,12 @@ changes (new deps, redesigns, schema changes). Tiny version badge added
   physics, gradient Play button, custom top bar. Reduced-motion respected.
 
 ## Shipped vs local
-- Latest GitHub release: **v0.4.0-beta** (auto-update, settings, Design V2,
-  skin library) — shipped 2026-07-09 with .exe + latest.yml.
-- LOCAL-ONLY, committed not pushed: version badge + all of Phase A (A1–A4:
-  error audit, skeletons, perf caches, crash diagnostics). Next ship =
-  **0.5.0-beta**; it's the FIRST update installed users' auto-updater will
-  detect — verify the in-app update popup end-to-end (GOTCHAS #11: upload
-  hyphenated .exe + latest.yml).
+- Latest GitHub release: **v0.5.0-beta** (Phase A: crash diagnostics, offline
+  caches, skeletons, friendly errors, atomic downloads, top-bar version badge,
+  restyled window controls) — shipped 2026-07-10, hyphenated .exe + latest.yml.
+- HEAD == origin/main, nothing local-only pending.
+- UNVERIFIED: did a 0.4.0-beta install show the auto-update popup for 0.5.0?
+  First real end-to-end updater run — confirm with Adam next session.
 
 ## Known loose ends
 - Legacy Forge (1.8.9/1.12.2 + OptiFine) not tested end-to-end in-game.

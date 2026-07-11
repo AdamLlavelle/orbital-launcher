@@ -20,9 +20,15 @@ Adam's operating rules for this step (set 2026-07-09, Fable 5 session):
       dep installs, parallel boot (profiles ∥ MS refresh)
 - [x] A4 Crash diagnostics: game-output ring buffer, 9 crash signatures →
       plain English, crash card w/ Copy Log (crashed vs couldn't-start)
-- [ ] Ship 0.5.0-beta — WAITING ON ADAM'S "ship it" (first release where
-      auto-update actually fires for installed users — verify the update
-      popup works end-to-end!)
+- [x] Ship 0.5.0-beta — SHIPPED 2026-07-10 (.exe hyphenated + latest.yml).
+      Also included: version badge in top bar, restyled window controls.
+      NOT YET CONFIRMED: whether a 0.4.0-beta install actually showed the
+      update popup (first real auto-update). Ask Adam / check next session.
+
+## Phase A → B transition
+Phase A done and shipped. Next: Phase B, starting with modpack import/export
+(.mrpack is a structural feature — new profile fields likely; flag anything
+schema-changing to Adam per his rule).
 
 ## Phase B — Power features (after A ships)
 - Modpack import (.mrpack + CurseForge) / export profile as pack  ← flagship
