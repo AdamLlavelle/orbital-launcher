@@ -995,6 +995,92 @@ ipcMain.handle('profiles:delete', async (_e, id) => {
   return data;
 });
 
+// ---------- profile import/export ----------
+// .orbprofile = a zip holding meta.json (name/description/version/loader)
+// plus the profile's mods folder, so a profile can be shared whole.
+
+const PROFILE_EXPORT_FORMAT = 1;
+
+ipcMain.handle('profiles:export', async (_e, id) => {
+  const data = await ensureProfiles();
+  const profile = data.profiles.find((p) => p.id === id);
+  if (!profile) throw new Error('Profile not found');
+
+  const safeName = profile.name.replace(/[<>:"/\\|?*]/g, '_').trim() || 'profile';
+  const result = await dialog.showSaveDialog(win, {
+    title: 'Export profile',
+    defaultPath: `${safeName}.orbprofile`,
+    filters: [{ name: 'Orbital profile', extensions: ['orbprofile'] }]
+  });
+  if (result.canceled || !result.filePath) return null;
+
+  const zip = new AdmZip();
+  zip.addFile('meta.json', Buffer.from(JSON.stringify({
+    format: PROFILE_EXPORT_FORMAT,
+    name: profile.name,
+    description: profile.description || '',
+    version: profile.version,
+    loader: profile.loader
+  }, null, 2)));
+  const modsDir = profileModsDir(profile.id);
+  if (fs.existsSync(modsDir)) {
+    for (const f of await fsp.readdir(modsDir)) {
+      if (f.endsWith('.jar') || f.endsWith('.jar.disabled')) {
+        zip.addLocalFile(path.join(modsDir, f), 'mods');
+      }
+    }
+  }
+  zip.writeZip(result.filePath);
+  return result.filePath;
+});
+
+ipcMain.handle('profiles:import', async () => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Import profile',
+    filters: [{ name: 'Orbital profile', extensions: ['orbprofile', 'zip'] }],
+    properties: ['openFile']
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+
+  let zip, meta;
+  try {
+    zip = new AdmZip(result.filePaths[0]);
+    meta = JSON.parse(zip.readAsText('meta.json'));
+  } catch {
+    throw new Error("That file isn't a valid Orbital profile export");
+  }
+  if (!meta || !meta.version || !meta.loader) {
+    throw new Error("That file isn't a valid Orbital profile export");
+  }
+
+  const data = await ensureProfiles();
+  let name = String(meta.name || 'Imported profile').slice(0, 40);
+  if (data.profiles.some((p) => p.name === name)) {
+    name = `${name.slice(0, 29)} (imported)`;
+  }
+  const profile = {
+    id: newId(),
+    name,
+    description: String(meta.description || '').slice(0, 140),
+    version: String(meta.version),
+    loader: ['vanilla', 'fabric', 'forge', 'quilt'].includes(meta.loader) ? meta.loader : 'vanilla'
+  };
+
+  const modsDir = profileModsDir(profile.id);
+  await fsp.mkdir(modsDir, { recursive: true });
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory || !entry.entryName.startsWith('mods/')) continue;
+    // write by basename only — entry names inside a zip are untrusted paths
+    const base = path.basename(entry.entryName);
+    if (!base.endsWith('.jar') && !base.endsWith('.jar.disabled')) continue;
+    await fsp.writeFile(path.join(modsDir, base), entry.getData());
+  }
+
+  data.profiles.push(profile);
+  saveProfiles(data);
+  return profile;
+});
+
 // ---------- Modrinth ----------
 
 ipcMain.handle('modrinth:search', async (_e, { query, mcVersion, loader, category, offset }) => {

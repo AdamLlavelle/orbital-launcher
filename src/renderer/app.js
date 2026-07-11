@@ -330,6 +330,41 @@ $('detail-browse').onclick = () => state.viewProfile && openBrowse(state.viewPro
 $('detail-open-folder').onclick = () => {
   if (state.viewProfile) feather.openFolder(`profiles/${state.viewProfile.id}/mods`);
 };
+$('detail-export').onclick = async () => {
+  const p = state.viewProfile;
+  if (!p) return;
+  const btn = $('detail-export');
+  btn.disabled = true;
+  btn.textContent = 'Exporting...';
+  try {
+    const file = await feather.exportProfile(p.id);
+    if (file) toast(`Exported "${p.name}"`, 'success');
+  } catch (err) {
+    toast(cleanError(err), 'error', 6000);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Export';
+  }
+};
+
+$('btn-import-profile').onclick = async () => {
+  const btn = $('btn-import-profile');
+  btn.disabled = true;
+  btn.textContent = 'Importing...';
+  try {
+    const p = await feather.importProfile();
+    if (p) {
+      await loadProfiles();
+      toast(`Imported "${p.name}"`, 'success');
+    }
+  } catch (err) {
+    toast(cleanError(err), 'error', 6000);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import';
+  }
+};
+
 $('detail-delete').onclick = async () => {
   const p = state.viewProfile;
   if (!p) return;

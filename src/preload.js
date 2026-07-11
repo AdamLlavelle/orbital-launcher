@@ -18,6 +18,8 @@ contextBridge.exposeInMainWorld('feather', {
   listProfiles: () => ipcRenderer.invoke('profiles:list'),
   createProfile: (opts) => ipcRenderer.invoke('profiles:create', opts),
   deleteProfile: (id) => ipcRenderer.invoke('profiles:delete', id),
+  exportProfile: (id) => ipcRenderer.invoke('profiles:export', id),
+  importProfile: () => ipcRenderer.invoke('profiles:import'),
 
   // Modrinth
   searchMods: (opts) => ipcRenderer.invoke('modrinth:search', opts),

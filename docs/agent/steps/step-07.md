@@ -26,12 +26,13 @@ Adam's operating rules for this step (set 2026-07-09, Fable 5 session):
       update popup (first real auto-update). Ask Adam / check next session.
 
 ## Phase A → B transition
-Phase A done and shipped. Next: Phase B, starting with modpack import/export
-(.mrpack is a structural feature — new profile fields likely; flag anything
-schema-changing to Adam per his rule).
+Phase A done and shipped. Phase B starts with profile import/export (see
+Phase B list — modpacks held back per Adam).
 
 ## Phase B — Power features (after A ships)
-- Modpack import (.mrpack + CurseForge) / export profile as pack  ← flagship
+- Profile import/export in the profile menu (.orbprofile = zip of meta.json
+  + mods/) ← flagship, ADAM'S CALL 2026-07-10: replaces modpack import/export
+  (modpacks HELD BACK for now — don't build without asking him)
 - Mod update indicators + Update All
 - Profile duplication, custom icons, per-profile RAM/args/resolution
 - Multi-account switching (+ offline accounts)

@@ -512,6 +512,25 @@ html, body {
 .ram-control input[type="range"] { width: 180px; accent-color: var(--accent); }
 #ram-value { width: 46px; text-align: right; color: var(--muted); font-size: 13px; }
 
+/* neutral sibling of .accent-button — same shape and weight, raised gray
+   instead of blue (Import next to + New Profile) */
+.solid-button {
+  padding: 0 22px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-hover);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.solid-button:hover:not(:disabled) {
+  background: #232c3f;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
 .ghost-button {
   padding: 8px 16px;
   background: transparent;
