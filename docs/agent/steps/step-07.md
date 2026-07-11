@@ -30,9 +30,11 @@ Phase A done and shipped. Phase B starts with profile import/export (see
 Phase B list — modpacks held back per Adam).
 
 ## Phase B — Power features (after A ships)
-- Profile import/export in the profile menu (.orbprofile = zip of meta.json
-  + mods/) ← flagship, ADAM'S CALL 2026-07-10: replaces modpack import/export
-  (modpacks HELD BACK for now — don't build without asking him)
+- [x] Profile import/export in the profile menu (.orbprofile = zip of
+  meta.json + mods/) — DONE 2026-07-11, Adam tested export+import working.
+  ADAM'S CALL 2026-07-10: this replaces modpack import/export (modpacks HELD
+  BACK — don't build without asking him). Import button = .solid-button
+  (neutral sibling of accent).
 - Mod update indicators + Update All
 - Profile duplication, custom icons, per-profile RAM/args/resolution
 - Multi-account switching (+ offline accounts)
