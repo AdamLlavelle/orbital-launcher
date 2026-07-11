@@ -43,10 +43,11 @@ himself — avoid computer-use except when clearly the better tool.
   window, profile import/export (.orbprofile), auto mod-update check +
   Update All, profile images (create/change/remove, in exports).
 - HEAD == origin/main, nothing local-only pending.
-- UPDATER TEST IN FLIGHT: Adam's installed 0.5.0-beta was opened right after
-  the 0.6.0 release — the in-app update popup should appear (first real
-  end-to-end auto-update). Confirm it worked; if not, run the installer via
-  explorer.exe per the ship rule.
+- AUTO-UPDATER VERIFIED END-TO-END 2026-07-11: Adam's installed 0.5.0-beta
+  showed the popup, downloaded and installed 0.6.0-beta. The whole pipeline
+  (publish block → latest.yml + hyphenated exe → popup → quitAndInstall)
+  works. Future ships: releasing correctly IS the updater path; only run the
+  installer manually if a user is too far behind or the updater breaks.
 
 ## Known loose ends
 - Legacy Forge (1.8.9/1.12.2 + OptiFine) not tested end-to-end in-game.
