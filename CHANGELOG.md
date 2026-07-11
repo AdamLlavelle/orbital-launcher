@@ -2,6 +2,29 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.6.0-beta — 2026-07-11
+
+### Added
+- **Game logs window**: launching the game opens a live console (Feather-style)
+  with color-coded output, CPU/RAM stats, a status chip, and Copy/Clear.
+  Toggle it in Settings.
+- **Profile import/export**: share a whole profile — mods, image and all — as
+  a single .orbprofile file. Export on the profile page, Import on the
+  Profiles tab.
+- **Mod updates**: opening a profile automatically checks its mods; stale ones
+  get an "Update" badge and one click updates everything (disabled mods stay
+  disabled).
+- **Profile images**: give profiles a custom picture — set it when creating a
+  profile or from the profile page (✕ to remove). Shows on cards and the
+  profile picker, and travels with exports.
+
+### Changed
+- **The launcher no longer freezes while launching** — the game launch runs in
+  a separate background process.
+- **Much faster launches**: files are fully verified on a version's first
+  launch only, then trusted (like the official launcher). A failed start
+  automatically triggers a full re-verification next time.
+
 ## 0.5.0-beta — 2026-07-09
 
 ### Added
