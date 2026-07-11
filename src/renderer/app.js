@@ -175,6 +175,7 @@ function loaderLabel(loader) {
 async function loadProfiles() {
   const data = await feather.listProfiles();
   state.profiles = data.profiles;
+  state.icons = data.icons || {};
   if (!state.profiles.find((p) => p.id === state.selectedProfileId)) {
     state.selectedProfileId = state.profiles[0] ? state.profiles[0].id : null;
   }
@@ -212,6 +213,12 @@ function renderProfileDropdown() {
   for (const p of state.profiles) {
     const opt = document.createElement('button');
     opt.className = 'profile-option' + (p.id === state.selectedProfileId ? ' selected' : '');
+    if (state.icons && state.icons[p.id]) {
+      const icon = document.createElement('img');
+      icon.className = 'profile-option-icon';
+      icon.src = state.icons[p.id];
+      opt.appendChild(icon);
+    }
     const name = document.createElement('span');
     name.textContent = p.name;
     const meta = document.createElement('span');
@@ -243,6 +250,12 @@ async function renderProfilesPage() {
 
     const top = document.createElement('div');
     top.className = 'profile-card-top';
+    if (state.icons && state.icons[p.id]) {
+      const icon = document.createElement('img');
+      icon.className = 'profile-card-icon';
+      icon.src = state.icons[p.id];
+      top.appendChild(icon);
+    }
     const name = document.createElement('div');
     name.className = 'profile-card-name';
     name.textContent = p.name;
@@ -369,6 +382,7 @@ function openProfileDetail(profile) {
   $('profile-detail-view').classList.remove('hidden');
 
   $('detail-name').textContent = profile.name;
+  renderDetailIcon(profile);
   const badge = $('detail-badge');
   badge.className = `loader-badge ${profile.loader}`;
   badge.textContent = profile.loader;
@@ -381,6 +395,56 @@ function openProfileDetail(profile) {
   playBtnDetail.title = '';
   loadInstalledMods();
 }
+
+// --- profile image (click = set/change, right-click = remove) ---
+function renderDetailIcon(profile) {
+  const el = $('detail-icon');
+  const url = state.icons && state.icons[profile.id];
+  el.innerHTML = '';
+  el.classList.toggle('has-image', !!url);
+  if (url) {
+    const img = document.createElement('img');
+    img.src = url;
+    el.appendChild(img);
+    el.title = 'Click to change image · right-click to remove';
+  } else {
+    el.textContent = '+';
+    el.title = 'Add a profile image';
+  }
+}
+
+$('detail-icon').onclick = async () => {
+  const p = state.viewProfile;
+  if (!p) return;
+  try {
+    const dataUrl = await feather.pickProfileIcon(p.id);
+    if (dataUrl) {
+      state.icons[p.id] = dataUrl;
+      renderDetailIcon(p);
+      renderProfilesPage();
+      renderProfileDropdown();
+      toast('Profile image set', 'success');
+    }
+  } catch (err) {
+    toast(cleanError(err), 'error', 6000);
+  }
+};
+
+$('detail-icon').oncontextmenu = async (e) => {
+  e.preventDefault();
+  const p = state.viewProfile;
+  if (!p || !(state.icons && state.icons[p.id])) return;
+  try {
+    await feather.removeProfileIcon(p.id);
+    delete state.icons[p.id];
+    renderDetailIcon(p);
+    renderProfilesPage();
+    renderProfileDropdown();
+    toast('Profile image removed', 'success');
+  } catch (err) {
+    toast(cleanError(err), 'error');
+  }
+};
 
 $('btn-back-list').onclick = showProfilesView;
 $('detail-play').onclick = () => {

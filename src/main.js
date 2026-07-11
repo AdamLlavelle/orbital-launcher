@@ -1085,7 +1085,10 @@ async function syncProfileMods(profile) {
   }
 }
 
-ipcMain.handle('profiles:list', async () => ensureProfiles());
+ipcMain.handle('profiles:list', async () => {
+  const data = await ensureProfiles();
+  return { ...data, icons: loadProfileIcons() };
+});
 
 ipcMain.handle('profiles:create', async (_e, { name, description, version, loader }) => {
   if (!version) throw new Error('Pick a Minecraft version');
@@ -1108,7 +1111,83 @@ ipcMain.handle('profiles:delete', async (_e, id) => {
   data.profiles = data.profiles.filter((p) => p.id !== id);
   saveProfiles(data);
   await fsp.rm(path.join(GAME_ROOT, 'profiles', id), { recursive: true, force: true }).catch(() => {});
+  await removeIconFiles(id);
+  profileIconCache = null;
   return data;
+});
+
+// ---------- profile icons ----------
+// Optional per-profile image, stored as profile-icons/<id>.<ext> in
+// userData. Sent to the renderer as data URLs (cached in memory).
+
+const profileIconsDir = () => path.join(app.getPath('userData'), 'profile-icons');
+const ICON_MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' };
+let profileIconCache = null; // id -> data url
+
+function loadProfileIcons() {
+  if (profileIconCache) return profileIconCache;
+  profileIconCache = {};
+  try {
+    for (const f of fs.readdirSync(profileIconsDir())) {
+      const ext = path.extname(f).toLowerCase();
+      const mime = ICON_MIME[ext];
+      if (!mime) continue;
+      const id = path.basename(f, ext);
+      profileIconCache[id] = `data:${mime};base64,${fs.readFileSync(path.join(profileIconsDir(), f)).toString('base64')}`;
+    }
+  } catch {}
+  return profileIconCache;
+}
+
+async function removeIconFiles(id) {
+  try {
+    for (const f of await fsp.readdir(profileIconsDir())) {
+      if (path.basename(f, path.extname(f)) === id) {
+        await fsp.unlink(path.join(profileIconsDir(), f)).catch(() => {});
+      }
+    }
+  } catch {}
+}
+
+async function setProfileIcon(id, buf, ext) {
+  await fsp.mkdir(profileIconsDir(), { recursive: true });
+  await removeIconFiles(id);
+  await fsp.writeFile(path.join(profileIconsDir(), `${id}${ext}`), buf);
+  profileIconCache = null;
+}
+
+function profileIconFile(id) {
+  try {
+    for (const f of fs.readdirSync(profileIconsDir())) {
+      if (path.basename(f, path.extname(f)) === id && ICON_MIME[path.extname(f).toLowerCase()]) {
+        return path.join(profileIconsDir(), f);
+      }
+    }
+  } catch {}
+  return null;
+}
+
+ipcMain.handle('profiles:pickIcon', async (_e, id) => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Choose a profile image',
+    filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }],
+    properties: ['openFile']
+  });
+  if (result.canceled || !result.filePaths[0]) return null;
+  const src = result.filePaths[0];
+  const stat = await fsp.stat(src);
+  if (stat.size > 2 * 1024 * 1024) throw new Error('Image too large — pick one under 2 MB');
+  let ext = path.extname(src).toLowerCase();
+  if (ext === '.jpeg') ext = '.jpg';
+  if (!ICON_MIME[ext]) throw new Error('Pick a PNG, JPG, GIF or WebP image');
+  await setProfileIcon(id, await fsp.readFile(src), ext);
+  return loadProfileIcons()[id] || null;
+});
+
+ipcMain.handle('profiles:removeIcon', async (_e, id) => {
+  await removeIconFiles(id);
+  profileIconCache = null;
+  return true;
 });
 
 // ---------- profile import/export ----------
@@ -1145,6 +1224,10 @@ ipcMain.handle('profiles:export', async (_e, id) => {
         zip.addLocalFile(path.join(modsDir, f), 'mods');
       }
     }
+  }
+  const iconPath = profileIconFile(profile.id);
+  if (iconPath) {
+    zip.addFile(`icon${path.extname(iconPath).toLowerCase()}`, await fsp.readFile(iconPath));
   }
   zip.writeZip(result.filePath);
   return result.filePath;
@@ -1185,11 +1268,20 @@ ipcMain.handle('profiles:import', async () => {
   const modsDir = profileModsDir(profile.id);
   await fsp.mkdir(modsDir, { recursive: true });
   for (const entry of zip.getEntries()) {
-    if (entry.isDirectory || !entry.entryName.startsWith('mods/')) continue;
+    if (entry.isDirectory) continue;
     // write by basename only — entry names inside a zip are untrusted paths
     const base = path.basename(entry.entryName);
-    if (!base.endsWith('.jar') && !base.endsWith('.jar.disabled')) continue;
-    await fsp.writeFile(path.join(modsDir, base), entry.getData());
+    if (entry.entryName.startsWith('mods/')) {
+      if (!base.endsWith('.jar') && !base.endsWith('.jar.disabled')) continue;
+      await fsp.writeFile(path.join(modsDir, base), entry.getData());
+    } else {
+      const m = /^icon(\.(png|jpg|jpeg|gif|webp))$/i.exec(entry.entryName);
+      if (m) {
+        let ext = m[1].toLowerCase();
+        if (ext === '.jpeg') ext = '.jpg';
+        await setProfileIcon(profile.id, entry.getData(), ext);
+      }
+    }
   }
 
   data.profiles.push(profile);

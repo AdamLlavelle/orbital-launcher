@@ -44,7 +44,11 @@ Phase B list — modpacks held back per Adam).
   launch (settings toggle showLogsOnLaunch), live log stream + system CPU/RAM
   stats, state chip (launching/running/crashed/exited), copy/clear/autoscroll.
   Window controls IPC now per-sender (BrowserWindow.fromWebContents).
-- Profile duplication, custom icons, per-profile RAM/args/resolution
+- [x] Profile images (Adam's friend's idea) — built 2026-07-11: click the
+  square next to the profile name on the detail page (right-click removes);
+  shows on cards + home dropdown; stored userData/profile-icons/<id>.<ext>,
+  ≤2MB png/jpg/gif/webp; included in .orbprofile export/import. Awaiting test.
+- Profile duplication, per-profile RAM/args/resolution
 - Multi-account switching (+ offline accounts)
 
 ## Phase C — The experience (after B ships)
