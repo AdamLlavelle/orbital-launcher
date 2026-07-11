@@ -1135,6 +1135,7 @@ $('set-resw').onchange = () => saveSetting({ resW: Number($('set-resw').value) |
 $('set-resh').onchange = () => saveSetting({ resH: Number($('set-resh').value) || null });
 $('set-fullscreen').onchange = () => saveSetting({ fullscreen: $('set-fullscreen').checked });
 $('set-minimize').onchange = () => saveSetting({ minimizeOnLaunch: $('set-minimize').checked });
+$('set-showlogs').onchange = () => saveSetting({ showLogsOnLaunch: $('set-showlogs').checked });
 $('set-javaargs').onchange = () => saveSetting({ javaArgs: $('set-javaargs').value.trim() });
 
 $('btn-import-data').onclick = async () => {
@@ -1158,6 +1159,7 @@ function bindSettingsInputs() {
   $('set-resh').value = s.resH || '';
   $('set-fullscreen').checked = !!s.fullscreen;
   $('set-minimize').checked = !!s.minimizeOnLaunch;
+  $('set-showlogs').checked = s.showLogsOnLaunch !== false;
   $('set-javaargs').value = s.javaArgs || '';
 }
 

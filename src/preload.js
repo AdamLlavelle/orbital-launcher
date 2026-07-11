@@ -48,6 +48,13 @@ contextBridge.exposeInMainWorld('feather', {
   openFolder: (sub) => ipcRenderer.invoke('app:openFolder', sub),
   getAppVersion: () => ipcRenderer.invoke('app:version'),
   getGameLog: () => ipcRenderer.invoke('diag:gameLog'),
+
+  // Game log window
+  openLogWindow: () => ipcRenderer.send('logs:open'),
+  onGameLog: (cb) => ipcRenderer.on('game:log', (_e, line) => cb(line)),
+  onGameLogReset: (cb) => ipcRenderer.on('game:log-reset', () => cb()),
+  onGameState: (cb) => ipcRenderer.on('game:state', (_e, d) => cb(d)),
+  onGameStats: (cb) => ipcRenderer.on('game:stats', (_e, d) => cb(d)),
   importOldData: () => ipcRenderer.invoke('data:import'),
 
   // Auto-update

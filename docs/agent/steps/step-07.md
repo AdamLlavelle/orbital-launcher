@@ -35,8 +35,15 @@ Phase B list — modpacks held back per Adam).
   ADAM'S CALL 2026-07-10: this replaces modpack import/export (modpacks HELD
   BACK — don't build without asking him). Import button = .solid-button
   (neutral sibling of accent).
-- [x] Mod update indicators + Update All — built 2026-07-11 (Modrinth batched
-  hash lookup + CF per-mod; preserves disabled state). Awaiting Adam's test.
+- [x] Mod update indicators + Update All — DONE, Adam tested 2026-07-11.
+  Auto-checks on profile open (status chip + Update all button; his redesign).
+- [x] Launch moved to utilityProcess (src/launch-worker.js) — fixes the UI
+  freeze during launch (MLC file verification blocked main). Forge classpath
+  fix lives in the worker now. Java zip extract also async. 2026-07-11.
+- [x] Feather-style game log window (renderer/logs.{html,js}) — auto-opens on
+  launch (settings toggle showLogsOnLaunch), live log stream + system CPU/RAM
+  stats, state chip (launching/running/crashed/exited), copy/clear/autoscroll.
+  Window controls IPC now per-sender (BrowserWindow.fromWebContents).
 - Profile duplication, custom icons, per-profile RAM/args/resolution
 - Multi-account switching (+ offline accounts)
 

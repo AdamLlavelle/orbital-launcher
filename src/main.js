@@ -1,11 +1,11 @@
-const { app, BrowserWindow, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, dialog, utilityProcess } = require('electron');
 const path = require('path');
+const os = require('os');
 const fs = require('fs');
 const fsp = fs.promises;
 const crypto = require('crypto');
 const { spawn } = require('child_process');
 const { Readable } = require('stream');
-const { Client } = require('minecraft-launcher-core');
 
 // msmc ships with node-fetch, which hits "Premature close" errors inside
 // Electron. Swap the cached node-fetch module for the native fetch before
@@ -283,7 +283,10 @@ async function ensureJava(mcVersion) {
     send('launch:status', { stage: 'java', percent: Math.round(p * 100), message: `Downloading Java ${major}... ${Math.round(p * 100)}%` })
   );
   send('launch:status', { stage: 'java', percent: 100, message: `Extracting Java ${major}...` });
-  new AdmZip(zipPath).extractAllTo(runtimeDir, true);
+  // async extraction — the sync variant blocks the whole UI for seconds
+  await new Promise((resolve, reject) =>
+    new AdmZip(zipPath).extractAllToAsync(runtimeDir, true, false, (err) => (err ? reject(err) : resolve()))
+  );
   await fsp.unlink(zipPath).catch(() => {});
 
   const javaw = findJavaw(runtimeDir);
@@ -368,9 +371,104 @@ function setupAutoUpdater() {
   ipcMain.handle('update:install', () => { if (autoUpdater) autoUpdater.quitAndInstall(); });
 }
 
-ipcMain.on('win:minimize', () => win.minimize());
-ipcMain.on('win:maximize', () => (win.isMaximized() ? win.unmaximize() : win.maximize()));
-ipcMain.on('win:close', () => win.close());
+// window controls act on whichever window sent them (main or logs window)
+ipcMain.on('win:minimize', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w) w.minimize();
+});
+ipcMain.on('win:maximize', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w) (w.isMaximized() ? w.unmaximize() : w.maximize());
+});
+ipcMain.on('win:close', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender);
+  if (w) w.close();
+});
+
+// ---------- game log window (Feather-style live logs + system stats) ----------
+
+let logWin = null;
+
+function openLogWindow() {
+  if (logWin && !logWin.isDestroyed()) {
+    logWin.show();
+    logWin.focus();
+    return;
+  }
+  logWin = new BrowserWindow({
+    width: 780,
+    height: 520,
+    minWidth: 520,
+    minHeight: 320,
+    frame: false,
+    backgroundColor: '#0b0e14',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+  logWin.loadFile(path.join(__dirname, 'renderer', 'logs.html'));
+  logWin.setMenuBarVisibility(false);
+  logWin.on('closed', () => {
+    logWin = null;
+    stopStats();
+  });
+  startStats();
+}
+
+function sendLogLine(line) {
+  if (logWin && !logWin.isDestroyed()) logWin.webContents.send('game:log', line);
+}
+function resetLogWindow() {
+  if (logWin && !logWin.isDestroyed()) logWin.webContents.send('game:log-reset');
+}
+function setLogState(state, code) {
+  if (logWin && !logWin.isDestroyed()) logWin.webContents.send('game:state', { state, code });
+}
+
+// System CPU% is computed from os.cpus() deltas — no child processes, no deps.
+let statsTimer = null;
+let lastCpuTimes = null;
+
+function cpuPercent() {
+  let idle = 0;
+  let total = 0;
+  for (const c of os.cpus()) {
+    for (const k in c.times) total += c.times[k];
+    idle += c.times.idle;
+  }
+  let pct = 0;
+  if (lastCpuTimes) {
+    const dTotal = total - lastCpuTimes.total;
+    const dIdle = idle - lastCpuTimes.idle;
+    pct = dTotal > 0 ? Math.round((1 - dIdle / dTotal) * 100) : 0;
+  }
+  lastCpuTimes = { idle, total };
+  return pct;
+}
+
+function startStats() {
+  if (statsTimer) return;
+  lastCpuTimes = null;
+  cpuPercent(); // prime the delta
+  statsTimer = setInterval(() => {
+    if (!logWin || logWin.isDestroyed()) return stopStats();
+    logWin.webContents.send('game:stats', {
+      cpu: cpuPercent(),
+      memUsed: os.totalmem() - os.freemem(),
+      memTotal: os.totalmem()
+    });
+  }, 2000);
+}
+function stopStats() {
+  if (statsTimer) {
+    clearInterval(statsTimer);
+    statsTimer = null;
+  }
+}
+
+ipcMain.on('logs:open', () => openLogWindow());
 
 // ---------- auth ----------
 
@@ -782,78 +880,84 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
     if (!s.fullscreen && Number(s.resW) > 0) windowOpts.width = Number(s.resW);
     if (!s.fullscreen && Number(s.resH) > 0) windowOpts.height = Number(s.resH);
 
-    const launcher = new Client();
+    // The launch itself runs in a utilityProcess (src/launch-worker.js) so
+    // MLC's per-launch file verification can never freeze the UI. The
+    // modern-Forge classpath fix lives in the worker now.
+    if (s.showLogsOnLaunch !== false) openLogWindow();
+    resetLogWindow();
+    setLogState('launching');
+
+    const worker = utilityProcess.fork(path.join(__dirname, 'launch-worker.js'));
     let started = false;
 
-    launcher.on('debug', (m) => {
-      console.log('[MLC]', m);
-      logGame(`[MLC] ${m}`);
-    });
-    // MLC puts the Forge *installer* jar on the classpath. Modern Forge's
-    // bootstrap builds a JPMS module graph from the classpath, and the
-    // installer's bundled jopt-simple collides with the real one
-    // ("Modules forge and jopt.simple export package joptsimple...").
-    // Drop the installer from the classpath for modern Forge only — legacy
-    // Forge (LaunchWrapper era, e.g. 1.8.9) has no module system and keeps
-    // its original classpath.
-    launcher.on('arguments', (args) => {
-      if (loader !== 'forge' || !config.forge) return;
-      const i = args.indexOf('-cp');
-      if (i === -1 || typeof args[i + 1] !== 'string') return;
-      const mainClass = String(args[i + 2] || '');
-      const modernForge = /minecraftforge\.bootstrap|cpw\.mods/i.test(mainClass);
-      if (!modernForge) return;
-      const installer = path.normalize(config.forge).toLowerCase();
-      const before = args[i + 1].split(';');
-      const after = before.filter((p) => path.normalize(p).toLowerCase() !== installer);
-      if (after.length !== before.length) {
-        args[i + 1] = after.join(';');
-        console.log('[launch] removed Forge installer jar from modern Forge classpath');
+    worker.on('message', (msg) => {
+      if (msg.type === 'debug') {
+        console.log('[MLC]', msg.line);
+        logGame(`[MLC] ${msg.line}`);
+        sendLogLine(`[MLC] ${msg.line}`);
+      } else if (msg.type === 'data') {
+        const line = String(msg.line).trim();
+        if (line) {
+          console.log('[game]', line);
+          logGame(line);
+          sendLogLine(line);
+        }
+        if (!started) {
+          started = true;
+          send('launch:status', { stage: 'running', percent: 100, message: 'Game is running' });
+          setLogState('running');
+          if (s.minimizeOnLaunch && win && !win.isDestroyed()) win.minimize();
+        }
+      } else if (msg.type === 'progress') {
+        // MLC re-verifies every file each launch; existing files are skipped,
+        // so after the first launch this phase is a check, not a download.
+        const percent = msg.total ? Math.round((msg.task / msg.total) * 100) : 0;
+        send('launch:status', { stage: 'download', percent, message: `Checking ${msg.kind}... ${percent}%` });
+      } else if (msg.type === 'started') {
+        send('launch:status', { stage: 'starting', percent: 100, message: 'Starting Minecraft...' });
+      } else if (msg.type === 'error') {
+        gameRunning = false;
+        console.log('[launch] worker error:', msg.message);
+        logGame(`[error] ${msg.message}`);
+        sendLogLine(`[error] ${msg.message}`);
+        setLogState('crashed');
+        send('launch:closed', { code: -1, crashed: true, startedOk: started, diagnosis: msg.message });
+      } else if (msg.type === 'close') {
+        gameRunning = false;
+        console.log('[game] exited with code', msg.code);
+        if (s.minimizeOnLaunch && win && !win.isDestroyed() && win.isMinimized()) win.restore();
+        const crashed = msg.code !== 0 && msg.code !== null;
+        setLogState(crashed ? 'crashed' : 'exited', msg.code);
+        send('launch:closed', {
+          code: msg.code,
+          crashed,
+          startedOk: started,
+          diagnosis: crashed ? diagnoseCrash() : null
+        });
       }
     });
-    launcher.on('data', (d) => {
-      const line = String(d).trim();
-      if (line) {
-        console.log('[game]', line);
-        logGame(line);
+    // safety net: if the worker dies without reporting, unlock the Play button
+    worker.on('exit', () => {
+      if (gameRunning) {
+        gameRunning = false;
+        setLogState('exited');
+        send('launch:closed', { code: null, crashed: false, startedOk: started, diagnosis: null });
       }
-      if (!started && s.minimizeOnLaunch && win && !win.isDestroyed()) win.minimize();
-    });
-    launcher.on('progress', (p) => {
-      const percent = p.total ? Math.round((p.task / p.total) * 100) : 0;
-      // MLC re-verifies every file each launch; existing files are skipped,
-      // so after the first launch this phase is a check, not a download.
-      send('launch:status', { stage: 'download', percent, message: `Checking ${p.type}... ${percent}%` });
-    });
-    launcher.on('data', () => {
-      if (!started) {
-        started = true;
-        send('launch:status', { stage: 'running', percent: 100, message: 'Game is running' });
-      }
-    });
-    launcher.on('close', (code) => {
-      gameRunning = false;
-      console.log('[game] exited with code', code);
-      if (s.minimizeOnLaunch && win && !win.isDestroyed() && win.isMinimized()) win.restore();
-      const crashed = code !== 0 && code !== null;
-      send('launch:closed', {
-        code,
-        crashed,
-        startedOk: started,
-        diagnosis: crashed ? diagnoseCrash() : null
-      });
     });
 
-    await launcher.launch({
-      ...config,
-      authorization: token.mclc(),
-      javaPath,
-      customArgs,
-      memory: { max: `${ram || 4}G`, min: '1G' },
-      ...(Object.keys(windowOpts).length ? { window: windowOpts } : {})
+    worker.postMessage({
+      opts: {
+        ...config,
+        authorization: token.mclc(),
+        javaPath,
+        customArgs,
+        memory: { max: `${ram || 4}G`, min: '1G' },
+        ...(Object.keys(windowOpts).length ? { window: windowOpts } : {})
+      },
+      loader,
+      forgeInstaller: config.forge || null
     });
 
-    send('launch:status', { stage: 'starting', percent: 100, message: 'Starting Minecraft...' });
     return true;
   } catch (err) {
     gameRunning = false;
@@ -1539,6 +1643,7 @@ const DEFAULT_SETTINGS = {
   resH: null,
   fullscreen: false,
   minimizeOnLaunch: false,
+  showLogsOnLaunch: true, // Feather-style live log window on game launch
   javaArgs: '',        // extra JVM args, space-separated
   lastVersion: null,
   lastLoader: 'vanilla',
