@@ -12,6 +12,10 @@ Do NOT scan the repo beyond files those docs point to unless the task requires i
 ## Commands
 - Test the app:   `explorer.exe "<repo>\Orbital Launcher (dev).bat"` (NEVER npm start
   directly — explorer.exe escapes the Claude sandbox; see GOTCHAS #4)
+- AFTER EVERY code change, relaunch the dev app so Adam can test immediately:
+  `taskkill //IM electron.exe //F` (kills only the dev instance), then the
+  explorer.exe line above. Adam tests himself — don't drive the UI via
+  computer control unless it's clearly the better tool.
 - Build installer: `npx electron-builder --win`  (only when shipping)
 - App log:         `%USERPROFILE%\feather-launcher.log`
 
