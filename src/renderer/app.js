@@ -297,8 +297,22 @@ async function renderProfilesPage() {
 }
 
 // --- profile detail view ---
+// update info per mod, keyed by base filename (without .disabled) — set by
+// the Check for updates button, cleared when a different profile opens
+let modUpdates = null;
+
+function resetUpdateButton() {
+  modUpdates = null;
+  const btn = $('btn-mod-updates');
+  btn.textContent = 'Check for updates';
+  btn.classList.remove('has-updates');
+  btn.dataset.mode = '';
+  btn.disabled = false;
+}
+
 function openProfileDetail(profile) {
   state.viewProfile = profile;
+  resetUpdateButton();
   closeDrawer();
   $('profiles-view').classList.add('hidden');
   $('browse-view').classList.add('hidden');
@@ -847,6 +861,7 @@ async function loadInstalledMods() {
   }
   if (state.viewProfile !== p) return; // user navigated away meanwhile
   $('installed-title').textContent = `Installed mods (${mods.length})`;
+  $('btn-mod-updates').classList.toggle('hidden', p.loader === 'vanilla' || !mods.length);
   listEl.innerHTML = '';
   if (!mods.length) {
     listEl.innerHTML = p.loader === 'vanilla'
@@ -885,6 +900,14 @@ async function loadInstalledMods() {
       off.className = 'off-badge';
       off.textContent = 'Disabled';
       titleRow.appendChild(off);
+    }
+    const upd = modUpdates && modUpdates[mod.name.replace(/\.disabled$/, '')];
+    if (upd && upd.updateAvailable) {
+      const badge = document.createElement('span');
+      badge.className = 'update-badge';
+      badge.textContent = `Update → ${upd.latestVersionNumber}`;
+      badge.title = 'A newer version is available — use Update all above';
+      titleRow.appendChild(badge);
     }
 
     const desc = document.createElement('div');
@@ -939,6 +962,60 @@ async function loadInstalledMods() {
     listEl.appendChild(row);
   }
 }
+
+$('btn-mod-updates').onclick = async () => {
+  const p = state.viewProfile;
+  if (!p) return;
+  const btn = $('btn-mod-updates');
+
+  // second click, after a check found updates: run Update all
+  if (btn.dataset.mode === 'update') {
+    btn.disabled = true;
+    btn.textContent = 'Updating...';
+    try {
+      const res = await feather.updateAllMods(p.id);
+      if (res.updated.length) {
+        toast(`Updated ${res.updated.length} mod${res.updated.length === 1 ? '' : 's'}`, 'success');
+      }
+      if (res.failed.length) {
+        toast(`Couldn't update ${res.failed.map((f) => f.name).join(', ')}`, 'error', 7000);
+      }
+      resetUpdateButton();
+      loadInstalledMods();
+      renderProfilesPage();
+    } catch (err) {
+      toast(cleanError(err), 'error', 6000);
+      btn.disabled = false;
+      btn.textContent = 'Update all';
+    }
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Checking...';
+  try {
+    const updates = await feather.checkModUpdates(p.id);
+    if (state.viewProfile !== p) return;
+    modUpdates = Object.fromEntries(updates.map((u) => [u.base, u]));
+    const n = updates.filter((u) => u.updateAvailable).length;
+    if (n) {
+      btn.dataset.mode = 'update';
+      btn.textContent = `Update all (${n})`;
+      btn.classList.add('has-updates');
+    } else {
+      btn.textContent = 'Everything up to date';
+      setTimeout(() => {
+        if (state.viewProfile === p && btn.dataset.mode !== 'update') resetUpdateButton();
+      }, 3000);
+    }
+    loadInstalledMods(); // re-render rows so update badges appear
+  } catch (err) {
+    toast(cleanError(err), 'error', 6000);
+    btn.textContent = 'Check for updates';
+  } finally {
+    btn.disabled = false;
+  }
+};
 
 // ---------- launching ----------
 const playBtn = $('btn-play');

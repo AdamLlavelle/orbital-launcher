@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('feather', {
   getForgeCategories: () => ipcRenderer.invoke('cf:categories'),
   listMods: (profileId, withMeta) => ipcRenderer.invoke('mods:list', profileId, withMeta),
   toggleMod: (opts) => ipcRenderer.invoke('mods:toggle', opts),
+  checkModUpdates: (profileId) => ipcRenderer.invoke('mods:checkUpdates', profileId),
+  updateAllMods: (profileId) => ipcRenderer.invoke('mods:updateAll', profileId),
   removeMod: (opts) => ipcRenderer.invoke('mods:remove', opts),
 
   // Skins

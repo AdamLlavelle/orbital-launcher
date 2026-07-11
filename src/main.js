@@ -1396,6 +1396,126 @@ ipcMain.handle('mods:list', async (_e, profileId, withMeta = false) => {
   return rows;
 });
 
+// ---------- mod updates ----------
+// A mod row is "updatable" when its source project has a newer file for this
+// profile's version+loader. Modrinth supports one batched lookup by file
+// hash; CurseForge is checked per-mod in parallel.
+
+async function checkModUpdates(profile) {
+  const modsDir = profileModsDir(profile.id);
+  if (!fs.existsSync(modsDir)) return [];
+  const files = (await fsp.readdir(modsDir)).filter((f) => f.endsWith('.jar') || f.endsWith('.jar.disabled'));
+  const cache = readJson(modMetaFile(), {});
+  const rows = [];
+  for (const f of files) {
+    const hash = await sha1OfFile(path.join(modsDir, f)).catch(() => null);
+    const meta = (hash && cache[hash]) || null;
+    rows.push({
+      name: f,
+      base: f.replace(/\.disabled$/, ''),
+      disabled: f.endsWith('.disabled'),
+      hash,
+      meta
+    });
+  }
+
+  const out = [];
+
+  const mr = rows.filter((r) => r.meta && r.meta.source === 'modrinth' && r.hash);
+  if (mr.length && profile.loader !== 'vanilla') {
+    try {
+      const byHash = await fetchJson(`${MODRINTH}/version_files/update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hashes: mr.map((r) => r.hash),
+          algorithm: 'sha1',
+          loaders: [profile.loader],
+          game_versions: [profile.version]
+        })
+      });
+      for (const r of mr) {
+        const v = byHash[r.hash];
+        if (!v || !v.files) continue;
+        const file = v.files.find((f) => f.primary) || v.files[0];
+        if (!file) continue;
+        out.push({
+          base: r.base,
+          title: r.meta.title,
+          projectId: r.meta.projectId,
+          source: 'modrinth',
+          disabled: r.disabled,
+          latestVersionId: v.id,
+          latestVersionNumber: v.version_number,
+          latestFilename: file.filename,
+          updateAvailable: file.filename !== r.base
+        });
+      }
+    } catch (e) {
+      console.warn('[updates] modrinth check failed:', e.message);
+    }
+  }
+
+  const cf = rows.filter((r) => r.meta && r.meta.source === 'curseforge');
+  await Promise.all(cf.map(async (r) => {
+    try {
+      const cfFiles = await cfFilesFor(r.meta.projectId, profile.version);
+      const latest = cfFiles[0];
+      if (!latest) return;
+      out.push({
+        base: r.base,
+        title: r.meta.title,
+        projectId: r.meta.projectId,
+        source: 'curseforge',
+        disabled: r.disabled,
+        latestFileId: latest.id,
+        latestVersionNumber: latest.displayName,
+        latestFilename: latest.fileName,
+        updateAvailable: latest.fileName !== r.base
+      });
+    } catch (e) {
+      console.warn('[updates] curseforge check failed:', r.meta.title, e.message);
+    }
+  }));
+
+  return out;
+}
+
+ipcMain.handle('mods:checkUpdates', async (_e, profileId) => {
+  const data = await ensureProfiles();
+  const profile = data.profiles.find((p) => p.id === profileId);
+  if (!profile) throw new Error('Profile not found');
+  return checkModUpdates(profile);
+});
+
+ipcMain.handle('mods:updateAll', async (_e, profileId) => {
+  const data = await ensureProfiles();
+  const profile = data.profiles.find((p) => p.id === profileId);
+  if (!profile) throw new Error('Profile not found');
+  const modsDir = profileModsDir(profile.id);
+
+  const updates = (await checkModUpdates(profile)).filter((u) => u.updateAvailable);
+  const results = { updated: [], failed: [] };
+  for (const u of updates) {
+    try {
+      if (u.source === 'curseforge') {
+        await cfInstallProject(Number(u.projectId), profile.version, modsDir, new Set(), [], u.latestFileId);
+      } else {
+        await installProject(u.projectId, profile.version, profile.loader, modsDir, new Set(), [], u.latestVersionId);
+      }
+      // the install path always writes an enabled jar — restore disabled state
+      if (u.disabled) {
+        const f = path.join(modsDir, u.latestFilename);
+        if (fs.existsSync(f)) await fsp.rename(f, `${f}.disabled`);
+      }
+      results.updated.push(u.title || u.base);
+    } catch (e) {
+      results.failed.push({ name: u.title || u.base, error: e.message });
+    }
+  }
+  return results;
+});
+
 ipcMain.handle('mods:toggle', async (_e, { profileId, name }) => {
   const modsDir = profileModsDir(profileId);
   const file = path.join(modsDir, path.basename(name));
