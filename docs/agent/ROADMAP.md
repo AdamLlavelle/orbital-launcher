@@ -24,12 +24,17 @@ Current step: **step-07** (elevate to "the real deal" — scope with Adam first)
       · Phase C: home dashboard/news/playtime, onboarding, keyboard nav → 0.7.0
       (0.4.0-beta shipped 2026-07-09 — auto-update live from next release.)
 
-## Later / parked
+## Now (order per Adam, 2026-07-11 — launcher itself is PAUSED at 0.6.0-beta)
 - [ ] In-game client mod (Lunar-style): Right Shift → in-game overlay menu
-      (CPS, keystrokes, FPS, etc.). This is a Minecraft mod in Java, a SEPARATE
-      codebase the launcher installs. New repo/skills. Adam may open a
-      dedicated session with full context for this.
-- [ ] macOS / Linux builds · modpack import · per-profile RAM
+      (CPS, keystrokes, FPS, etc.) with settings. This is a Minecraft mod in
+      Java, a SEPARATE codebase the launcher installs. New repo. Adam opens a
+      dedicated session for it. NO pushes to this repo until it's done.
+- [ ] Then Phase C (see steps/step-07.md): home dashboard, onboarding.
+
+## Later / parked
+- [ ] Phase B remainder: profile duplication, per-profile RAM/args/resolution,
+      multi-account switching
+- [ ] macOS / Linux builds · modpack import (held back per Adam)
 
 Rules: only the current step's file exists in steps/. Finish a step → delete
 its file, tick here, write the next step's file.

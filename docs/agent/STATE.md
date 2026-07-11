@@ -8,15 +8,19 @@ GitHub: https://github.com/AdamLlavelle/orbital-launcher.
 Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Launcher`.
 Built entirely by AI, directed by Adam (attribution in README + releases).
 
-## Mission: step-07 "the real deal" (plan approved, see steps/step-07.md)
-Phase A shipped as 0.5.0-beta (07-10). Most of Phase B shipped as 0.6.0-beta
-(07-11): profile import/export (modpacks HELD BACK per Adam), update-all,
-profile images, launch worker + fast verify, log window. Phase B remainder:
-profile duplication, per-profile RAM/args/resolution, multi-account. Then
-Phase C (dashboard, onboarding). Adam's rules: proceed freely in-phase; ask
-only for structural changes (new deps, redesigns, schema changes). After
-EVERY code change: relaunch dev app (see CLAUDE.md Commands). Adam tests
-himself — avoid computer-use except when clearly the better tool.
+## Mission — LAUNCHER PAUSED (Adam's call, 2026-07-11)
+Adam is satisfied with the launcher at 0.6.0-beta and is leaving it untouched.
+NEW PLAN, in order:
+1. Build the IN-GAME CLIENT — the parked Lunar-style Minecraft mod (Right
+   Shift overlay, CPS/keystrokes/FPS, settings). SEPARATE Java codebase +
+   new repo; Adam will open a dedicated session for it.
+2. Then launcher Phase C (dashboard, onboarding) — see steps/step-07.md.
+DO NOT push to this GitHub repo until the client is fully done (+ possibly
+Phase C) — Adam wants the public repo frozen at 0.6.0-beta until then.
+Local doc/code commits remain fine.
+Launcher work rules (when it resumes): proceed freely in-phase; ask only for
+structural changes. After EVERY code change relaunch the dev app (CLAUDE.md
+Commands). Adam tests himself — avoid computer-use unless clearly better.
 
 ## Working & verified
 - Microsoft sign-in (msmc, persistent, empty-profile retry guard)
