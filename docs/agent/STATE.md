@@ -9,12 +9,14 @@ Game data: `%APPDATA%\.orbitallauncher` · launcher data: `%APPDATA%\Orbital Lau
 Built entirely by AI, directed by Adam (attribution in README + releases).
 
 ## Mission: step-07 "the real deal" (plan approved, see steps/step-07.md)
-Phase A (bulletproof) SHIPPED as 0.5.0-beta on 2026-07-10. Next = Phase B
-(modpack import/export ← flagship, mod update-all, profile dup/icons/
-per-profile settings, multi-account), then Phase C (dashboard, onboarding).
-Adam's rules: proceed freely in-phase; ask only for structural changes (new
-deps, redesigns, schema changes). Version badge lives in the TOP BAR next to
-the brand (Adam rejected a floating bottom overlay — it overlapped content).
+Phase A shipped as 0.5.0-beta (07-10). Most of Phase B shipped as 0.6.0-beta
+(07-11): profile import/export (modpacks HELD BACK per Adam), update-all,
+profile images, launch worker + fast verify, log window. Phase B remainder:
+profile duplication, per-profile RAM/args/resolution, multi-account. Then
+Phase C (dashboard, onboarding). Adam's rules: proceed freely in-phase; ask
+only for structural changes (new deps, redesigns, schema changes). After
+EVERY code change: relaunch dev app (see CLAUDE.md Commands). Adam tests
+himself — avoid computer-use except when clearly the better tool.
 
 ## Working & verified
 - Microsoft sign-in (msmc, persistent, empty-profile retry guard)
@@ -36,12 +38,15 @@ the brand (Adam rejected a floating bottom overlay — it overlapped content).
   physics, gradient Play button, custom top bar. Reduced-motion respected.
 
 ## Shipped vs local
-- Latest GitHub release: **v0.5.0-beta** (Phase A: crash diagnostics, offline
-  caches, skeletons, friendly errors, atomic downloads, top-bar version badge,
-  restyled window controls) — shipped 2026-07-10, hyphenated .exe + latest.yml.
+- Latest GitHub release: **v0.6.0-beta** (shipped 2026-07-11): launch in
+  utilityProcess (no UI freeze), fast-verify launches, Feather-style log
+  window, profile import/export (.orbprofile), auto mod-update check +
+  Update All, profile images (create/change/remove, in exports).
 - HEAD == origin/main, nothing local-only pending.
-- UNVERIFIED: did a 0.4.0-beta install show the auto-update popup for 0.5.0?
-  First real end-to-end updater run — confirm with Adam next session.
+- UPDATER TEST IN FLIGHT: Adam's installed 0.5.0-beta was opened right after
+  the 0.6.0 release — the in-app update popup should appear (first real
+  end-to-end auto-update). Confirm it worked; if not, run the installer via
+  explorer.exe per the ship rule.
 
 ## Known loose ends
 - Legacy Forge (1.8.9/1.12.2 + OptiFine) not tested end-to-end in-game.
