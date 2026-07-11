@@ -887,6 +887,13 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
     resetLogWindow();
     setLogState('launching');
 
+    // Full file verification happens only until a version launches
+    // successfully once; after that the marker lets the worker skip
+    // re-hashing every asset (official-launcher behavior). A crash before
+    // the game even starts removes the marker → next launch re-verifies.
+    const verifiedMarker = path.join(GAME_ROOT, `.verified-${(config.version && config.version.custom) || version}`);
+    const fastVerify = fs.existsSync(verifiedMarker);
+
     const worker = utilityProcess.fork(path.join(__dirname, 'launch-worker.js'));
     let started = false;
 
@@ -907,6 +914,7 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
           send('launch:status', { stage: 'running', percent: 100, message: 'Game is running' });
           setLogState('running');
           if (s.minimizeOnLaunch && win && !win.isDestroyed()) win.minimize();
+          fs.writeFile(verifiedMarker, 'ok', () => {});
         }
       } else if (msg.type === 'progress') {
         // MLC re-verifies every file each launch; existing files are skipped,
@@ -927,6 +935,9 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
         console.log('[game] exited with code', msg.code);
         if (s.minimizeOnLaunch && win && !win.isDestroyed() && win.isMinimized()) win.restore();
         const crashed = msg.code !== 0 && msg.code !== null;
+        // crash before the game window ever appeared → files may be bad;
+        // drop the marker so the next launch does a full verification
+        if (crashed && !started) fs.unlink(verifiedMarker, () => {});
         setLogState(crashed ? 'crashed' : 'exited', msg.code);
         send('launch:closed', {
           code: msg.code,
@@ -955,7 +966,8 @@ ipcMain.handle('mc:launch', async (_e, { profileId, ram }) => {
         ...(Object.keys(windowOpts).length ? { window: windowOpts } : {})
       },
       loader,
-      forgeInstaller: config.forge || null
+      forgeInstaller: config.forge || null,
+      fastVerify
     });
 
     return true;

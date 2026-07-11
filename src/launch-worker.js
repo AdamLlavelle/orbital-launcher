@@ -5,11 +5,23 @@
 //   out: { type: 'debug'|'data'|'progress'|'started'|'error'|'close', ... }
 const path = require('path');
 const { Client } = require('minecraft-launcher-core');
+const Handler = require('minecraft-launcher-core/components/handler');
 
 const post = (msg) => process.parentPort.postMessage(msg);
 
 process.parentPort.once('message', (e) => {
-  const { opts, loader, forgeInstaller } = e.data;
+  const { opts, loader, forgeInstaller, fastVerify } = e.data;
+
+  // MLC sha1-hashes EVERY asset file on EVERY launch (handler.getAssets) —
+  // hundreds of MB of disk reads. Official launchers verify once at install
+  // and then trust existing files. After a version has launched successfully
+  // once (main sends fastVerify), skip the re-hashing: missing files are
+  // still caught by the existsSync check and re-downloaded.
+  if (fastVerify) {
+    Handler.prototype.checkSum = () => Promise.resolve(true);
+    post({ type: 'debug', line: '[worker] fast launch: files verified on a previous run, skipping re-hash' });
+  }
+
   const launcher = new Client();
 
   launcher.on('debug', (m) => post({ type: 'debug', line: String(m) }));

@@ -81,6 +81,18 @@
     upload THAT, or electron-updater can't find the file. (v0.4.0-beta uploaded
     the hyphenated exe + latest.yml — both names line up.)
 
+13. **MLC re-hashes EVERY asset file on EVERY launch** (handler.getAssets →
+    checkSum on each of ~4000 assets = hundreds of MB of disk reads; that was
+    the long "Checking assets" phase). Official launchers verify once then
+    trust files. Fix: launch-worker patches `Handler.prototype.checkSum` to
+    resolve(true) when main passes `fastVerify` — set once a version has a
+    `GAME_ROOT/.verified-<version>` marker (written on first successful
+    start, deleted on crash-before-start so bad files self-heal). Missing
+    files still re-download via the existsSync check. Also: the launch runs
+    in an Electron utilityProcess (src/launch-worker.js) since 0.6.0 — MLC
+    work can't freeze the UI; the modern-Forge classpath fix (see #9) lives
+    in the worker now.
+
 12. **Skin API is rate-limited hard by Mojang (429).** Cache the profile in
     main (`skinCache`); variant toggle re-renders the 3D model LOCALLY from the
     cached skin bytes (no network) and makes only ONE setVariant call. Don't
