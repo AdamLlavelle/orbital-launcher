@@ -42,10 +42,13 @@ Commands). Adam tests himself — avoid computer-use unless clearly better.
   physics, gradient Play button, custom top bar. Reduced-motion respected.
 
 ## Shipped vs local
-- Latest GitHub release: **v0.6.0-beta** (shipped 2026-07-11): launch in
-  utilityProcess (no UI freeze), fast-verify launches, Feather-style log
-  window, profile import/export (.orbprofile), auto mod-update check +
-  Update All, profile images (create/change/remove, in exports).
+- Latest GitHub release: **v0.6.1-beta** (shipped 2026-07-12): in-app mod
+  pages (click a card → sanitized description/gallery/stats) + "Installed"
+  markers in the mod browser. Adam lifted the repo freeze for this ship; the
+  freeze note below still applies to future work unless he says ship.
+- 0.6.0-beta (07-11) had: launch in utilityProcess (no UI freeze),
+  fast-verify launches, log window, profile import/export, update-all,
+  profile images.
 - HEAD == origin/main, nothing local-only pending.
 - AUTO-UPDATER VERIFIED END-TO-END 2026-07-11: Adam's installed 0.5.0-beta
   showed the popup, downloaded and installed 0.6.0-beta. The whole pipeline

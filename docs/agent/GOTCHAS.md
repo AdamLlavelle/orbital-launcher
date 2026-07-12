@@ -57,7 +57,7 @@
 
 10. **Releases**: electron-builder NSIS, `perMachine`+`oneClick` → Program Files,
    UAC prompt Adam must click. Version comes from package.json. gh CLI authed
-   as AdamLlavelle. Latest GitHub release: v0.6.0-beta (shipped 2026-07-11).
+   as AdamLlavelle. Latest GitHub release: v0.6.1-beta (shipped 2026-07-12).
    Don't history-rewrite (filter-branch) — repo is public/shared.
    Ship flow: bump package.json, update CHANGELOG, `npm run dist`, commit,
    push, `gh release create vX --prerelease` uploading BOTH the .exe AND
