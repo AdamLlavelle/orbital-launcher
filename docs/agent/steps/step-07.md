@@ -50,6 +50,10 @@ Phase B list — modpacks held back per Adam).
   ≤2MB png/jpg/gif/webp; included in .orbprofile export/import. Awaiting test.
 - Profile duplication, per-profile RAM/args/resolution
 - Multi-account switching (+ offline accounts)
+- [x] In-app mod pages (friend's idea, built 2026-07-12 during the "pause"):
+  click a mod card → modal with full description (whitelist-sanitized DOM,
+  never innerHTML), gallery, stats, categories, Install/Versions/Open Page.
+  LOCAL ONLY — repo frozen, don't push until the in-game client is done.
 
 ## Phase C — The experience (after B ships)
 - Home dashboard: news/patch-notes feed, recent profiles, playtime stats
