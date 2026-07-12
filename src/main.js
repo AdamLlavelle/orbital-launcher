@@ -1657,6 +1657,19 @@ async function enrichMods(modsDir, rows) {
   }
 }
 
+// Project ids of everything installed in a profile — lets the mod browser
+// show "Installed" instead of "Install" for mods you already have.
+ipcMain.handle('mods:installedProjects', async (_e, profileId) => {
+  const modsDir = profileModsDir(profileId);
+  if (!fs.existsSync(modsDir)) return [];
+  const rows = [];
+  for (const f of await fsp.readdir(modsDir)) {
+    if (f.endsWith('.jar') || f.endsWith('.jar.disabled')) rows.push({ name: f, meta: null });
+  }
+  await enrichMods(modsDir, rows); // hash lookup, cached by sha1 forever
+  return [...new Set(rows.filter((r) => r.meta && r.meta.projectId != null).map((r) => String(r.meta.projectId)))];
+});
+
 ipcMain.handle('mods:list', async (_e, profileId, withMeta = false) => {
   const modsDir = profileModsDir(profileId);
   if (!fs.existsSync(modsDir)) return [];

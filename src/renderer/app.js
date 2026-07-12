@@ -28,9 +28,24 @@ const state = {
   categories: null,        // filter chips for the open browse view
   cfCategories: null,      // cached CurseForge category chips
   modPage: 0,              // 0-based page in Browse Mods
+  installedProjects: null, // Set of project ids installed in the browse profile
+  lastHits: null,          // hits of the currently rendered browse page
   launching: false,
   running: false
 };
+
+// Identify what's already in the profile so the browser can say "Installed".
+// Runs in the background when browse opens; re-renders the page when ready.
+async function refreshInstalledProjects(p, rerender) {
+  try {
+    const ids = await feather.getInstalledProjects(p.id);
+    if (state.viewProfile !== p) return;
+    state.installedProjects = new Set(ids.map(String));
+    if (rerender && state.lastHits && !$('browse-view').classList.contains('hidden')) {
+      renderResults(state.lastHits);
+    }
+  } catch {} // browser simply shows "Install" everywhere if this fails
+}
 
 // ---------- window controls ----------
 $('btn-min').onclick = () => feather.winMinimize();
@@ -725,6 +740,8 @@ $('np-create').onclick = async () => {
 async function openBrowse(profile) {
   state.viewProfile = profile;
   state.activeCategory = '';
+  state.installedProjects = null;
+  refreshInstalledProjects(profile, true);
   $('profiles-view').classList.add('hidden');
   $('profile-detail-view').classList.add('hidden');
   $('browse-view').classList.remove('hidden');
@@ -795,6 +812,7 @@ async function fetchModPage() {
       category: state.activeCategory,
       offset: state.modPage * PAGE_SIZE
     });
+    state.lastHits = hits;
     renderResults(hits);
     renderPager(total);
   } catch (err) {
@@ -890,11 +908,13 @@ function renderResults(hits) {
     const actions = document.createElement('div');
     actions.className = 'mod-actions';
 
+    const alreadyInstalled = state.installedProjects && state.installedProjects.has(String(hit.id));
     const installBtn = document.createElement('button');
-    installBtn.className = 'mod-install';
-    installBtn.textContent = 'Install';
-    installBtn.disabled = vanilla;
+    installBtn.className = 'mod-install' + (alreadyInstalled ? ' installed' : '');
+    installBtn.textContent = alreadyInstalled ? 'Installed' : 'Install';
+    installBtn.disabled = vanilla || alreadyInstalled;
     if (vanilla) installBtn.title = 'This profile is Vanilla — mods need Fabric, Forge or Quilt';
+    if (alreadyInstalled) installBtn.title = 'Already in this profile — use Versions to switch versions';
     installBtn.onclick = (e) => {
       e.stopPropagation();
       installFromButton(installBtn, hit, null);
@@ -925,6 +945,9 @@ async function installFromButton(btn, hit, versionId, onDone) {
     const { installed } = await feather.installMod({ projectId: hit.id, profileId: p.id, versionId });
     btn.textContent = 'Installed';
     btn.classList.add('installed');
+    btn.disabled = true;
+    if (state.installedProjects) state.installedProjects.add(String(hit.id));
+    refreshInstalledProjects(p, false); // pick up dependencies too
     toast(
       installed.length > 1
         ? `Installed ${hit.title} + ${installed.length - 1} dependencies`
@@ -1063,9 +1086,10 @@ async function openModDetails(hit) {
 
   const installBtn = $('modd-install');
   const vanilla = p.loader === 'vanilla';
-  installBtn.disabled = vanilla;
-  installBtn.textContent = 'Install';
-  installBtn.classList.remove('installed');
+  const alreadyInstalled = state.installedProjects && state.installedProjects.has(String(hit.id));
+  installBtn.disabled = vanilla || alreadyInstalled;
+  installBtn.textContent = alreadyInstalled ? 'Installed' : 'Install';
+  installBtn.classList.toggle('installed', !!alreadyInstalled);
 
   modOverlay.classList.remove('hidden');
 
