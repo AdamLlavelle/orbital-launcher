@@ -2,6 +2,15 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.6.1-beta — 2026-07-12
+
+### Added
+- **In-app mod pages**: click any mod in the browser for its full description,
+  screenshots, stats and categories — no more opening modrinth.com just to
+  read what a mod does. Install or jump to Versions right from the page.
+- The mod browser now shows **"Installed"** on mods the profile already has
+  (dependencies included) instead of tempting you with an Install button.
+
 ## 0.6.0-beta — 2026-07-11
 
 ### Added
