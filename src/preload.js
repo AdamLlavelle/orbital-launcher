@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld('feather', {
   searchMods: (opts) => ipcRenderer.invoke('modrinth:search', opts),
   installMod: (opts) => ipcRenderer.invoke('modrinth:install', opts),
   getModVersions: (opts) => ipcRenderer.invoke('modrinth:versions', opts),
+  getModDetails: (opts) => ipcRenderer.invoke('mods:details', opts),
+  openExternal: (url) => ipcRenderer.invoke('app:openExternal', url),
   getForgeCategories: () => ipcRenderer.invoke('cf:categories'),
   listMods: (profileId, withMeta) => ipcRenderer.invoke('mods:list', profileId, withMeta),
   toggleMod: (opts) => ipcRenderer.invoke('mods:toggle', opts),

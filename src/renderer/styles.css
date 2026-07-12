@@ -393,7 +393,10 @@ html, body {
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.18s, transform 0.16s var(--ease);
 }
+.mod-card:hover { border-color: var(--accent); transform: translateY(-1px); }
 
 .mod-card img {
   width: 48px;
@@ -511,6 +514,98 @@ html, body {
 .ram-control { display: flex; align-items: center; gap: 12px; }
 .ram-control input[type="range"] { width: 180px; accent-color: var(--accent); }
 #ram-value { width: 46px; text-align: right; color: var(--muted); font-size: 13px; }
+
+/* ---------- mod details modal ---------- */
+
+.mod-modal {
+  position: relative;
+  width: min(760px, calc(100vw - 80px));
+  max-height: calc(100vh - 120px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px;
+}
+.mod-modal .update-x { position: absolute; top: 10px; right: 10px; }
+
+.mod-modal-head { display: flex; gap: 16px; align-items: flex-start; padding-right: 26px; }
+.modd-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  flex: none;
+  background: var(--bg-hover);
+  object-fit: cover;
+}
+.modd-head-info { flex: 1; min-width: 0; }
+.modd-title-row { display: flex; align-items: center; gap: 10px; }
+.modd-title-row h3 { font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.modd-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.modd-cats { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.modd-cats span {
+  font-size: 10.5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.modd-actions { display: flex; flex-direction: column; gap: 8px; flex: none; }
+.modd-actions .accent-button { height: 36px; padding: 0 18px; font-size: 13px; }
+
+.mod-modal-scroll { overflow-y: auto; margin-top: 16px; min-height: 60px; }
+
+.modd-gallery {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+.modd-gallery img {
+  height: 130px;
+  border-radius: 8px;
+  flex: none;
+  border: 1px solid var(--border);
+}
+
+.modd-body { font-size: 13.5px; line-height: 1.65; color: #c6cddb; user-select: text; }
+.modd-body h3, .modd-body h4, .modd-body h5, .modd-body h6 { color: var(--text); margin: 16px 0 6px; }
+.modd-body p { margin: 8px 0; }
+.modd-body ul, .modd-body ol { margin: 8px 0 8px 22px; }
+.modd-body img { max-width: 100%; border-radius: 8px; margin: 6px 0; }
+.modd-body a { color: var(--accent); text-decoration: none; cursor: pointer; }
+.modd-body a:hover { text-decoration: underline; }
+.modd-body code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+}
+.modd-body pre {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 8px 0;
+  font-family: Consolas, monospace;
+  font-size: 12px;
+}
+.modd-body pre code { border: none; background: transparent; padding: 0; }
+.modd-body blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 12px;
+  color: var(--muted);
+  margin: 8px 0;
+}
+.modd-body hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+.modd-body table { border-collapse: collapse; margin: 8px 0; max-width: 100%; }
+.modd-body td, .modd-body th { border: 1px solid var(--border); padding: 5px 10px; }
 
 /* ---------- profile images ---------- */
 

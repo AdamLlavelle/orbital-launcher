@@ -867,6 +867,8 @@ function renderResults(hits) {
   for (const hit of hits) {
     const card = document.createElement('div');
     card.className = 'mod-card';
+    card.title = 'Click for details';
+    card.onclick = () => openModDetails(hit);
 
     const img = document.createElement('img');
     img.src = hit.icon || '';
@@ -893,13 +895,19 @@ function renderResults(hits) {
     installBtn.textContent = 'Install';
     installBtn.disabled = vanilla;
     if (vanilla) installBtn.title = 'This profile is Vanilla — mods need Fabric, Forge or Quilt';
-    installBtn.onclick = () => installFromButton(installBtn, hit, null);
+    installBtn.onclick = (e) => {
+      e.stopPropagation();
+      installFromButton(installBtn, hit, null);
+    };
 
     const versionsBtn = document.createElement('button');
     versionsBtn.className = 'versions-btn';
     versionsBtn.textContent = 'Versions';
     versionsBtn.disabled = vanilla;
-    versionsBtn.onclick = () => openVersionDrawer(hit);
+    versionsBtn.onclick = (e) => {
+      e.stopPropagation();
+      openVersionDrawer(hit);
+    };
 
     actions.append(installBtn, versionsBtn);
     card.append(img, info, actions);
@@ -931,6 +939,196 @@ async function installFromButton(btn, hit, versionId, onDone) {
     toast(cleanError(err), 'error', 6000);
   }
 }
+
+// ---------- mod details modal ----------
+// Descriptions are untrusted remote HTML/markdown, so they are never put
+// through innerHTML: everything is rebuilt as DOM nodes against a tag
+// whitelist, links open externally, images must be https.
+
+const SAFE_TAGS = new Set(['P', 'BR', 'STRONG', 'EM', 'U', 'S', 'UL', 'OL', 'LI', 'CODE', 'PRE',
+  'BLOCKQUOTE', 'HR', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TD', 'TH', 'SPAN', 'DIV', 'DETAILS', 'SUMMARY']);
+const TAG_MAP = { H1: 'h3', H2: 'h4', H3: 'h5', H4: 'h6', H5: 'h6', H6: 'h6', B: 'strong', I: 'em', CENTER: 'div' };
+
+function sanitizeToFragment(html) {
+  const doc = new DOMParser().parseFromString(String(html), 'text/html');
+  const frag = document.createDocumentFragment();
+  const walk = (srcNode, parent) => {
+    for (const child of srcNode.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        parent.appendChild(document.createTextNode(child.textContent));
+        continue;
+      }
+      if (child.nodeType !== Node.ELEMENT_NODE) continue;
+      const tag = child.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'IFRAME') continue;
+      if (tag === 'A') {
+        const a = document.createElement('a');
+        const href = child.getAttribute('href') || '';
+        if (/^https?:\/\//i.test(href)) a.dataset.href = href;
+        parent.appendChild(a);
+        walk(child, a);
+        continue;
+      }
+      if (tag === 'IMG') {
+        const src = child.getAttribute('src') || '';
+        if (/^https:\/\//i.test(src)) {
+          const img = document.createElement('img');
+          img.src = src;
+          img.alt = child.getAttribute('alt') || '';
+          img.loading = 'lazy';
+          parent.appendChild(img);
+        }
+        continue;
+      }
+      const mapped = TAG_MAP[tag] || (SAFE_TAGS.has(tag) ? tag.toLowerCase() : null);
+      if (mapped) {
+        const el = document.createElement(mapped);
+        parent.appendChild(el);
+        walk(child, el);
+      } else {
+        walk(child, parent); // unknown tag: keep its content, drop the tag
+      }
+    }
+  };
+  walk(doc.body, frag);
+  return frag;
+}
+
+// Just enough markdown for typical Modrinth bodies (which also embed raw
+// HTML — that passes straight through to the sanitizer above).
+function mdToHtml(md) {
+  let h = String(md).replace(/\r\n/g, '\n');
+  h = h.replace(/```[^\n]*\n([\s\S]*?)```/g, (_, code) =>
+    `<pre>${code.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>`);
+  h = h.replace(/^###### ?(.+)$/gm, '<h6>$1</h6>')
+    .replace(/^##### ?(.+)$/gm, '<h5>$1</h5>')
+    .replace(/^#### ?(.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### ?(.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## ?(.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# ?(.+)$/gm, '<h1>$1</h1>');
+  h = h.replace(/^(?:-{3,}|\*{3,})\s*$/gm, '<hr>');
+  h = h.replace(/!\[([^\]]*)\]\(([^)\s]+)[^)]*\)/g, '<img src="$2" alt="$1">');
+  h = h.replace(/\[([^\]]+)\]\(([^)\s]+)[^)]*\)/g, '<a href="$2">$1</a>');
+  h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  h = h.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  h = h.replace(/^(?:[-*+] .*(?:\n|$))+/gm, (block) =>
+    `<ul>${block.trim().split('\n').map((l) => `<li>${l.replace(/^[-*+] /, '')}</li>`).join('')}</ul>`);
+  h = h.replace(/^(?:\d+\. .*(?:\n|$))+/gm, (block) =>
+    `<ol>${block.trim().split('\n').map((l) => `<li>${l.replace(/^\d+\. /, '')}</li>`).join('')}</ol>`);
+  return h.split(/\n{2,}/).map((chunk) => {
+    const t = chunk.trim();
+    if (!t) return '';
+    return /^<(h\d|ul|ol|pre|p|img|table|blockquote|div|center|hr|details)/i.test(t)
+      ? t
+      : `<p>${t.replace(/\n/g, '<br>')}</p>`;
+  }).join('\n');
+}
+
+const modOverlay = $('mod-overlay');
+let moddHit = null; // the search hit the modal was opened from
+
+function closeModDetails() {
+  modOverlay.classList.add('hidden');
+}
+$('modd-close').onclick = closeModDetails;
+modOverlay.onclick = (e) => {
+  if (e.target === modOverlay) closeModDetails();
+};
+
+$('modd-body').onclick = (e) => {
+  const a = e.target.closest('a[data-href]');
+  if (a) {
+    e.preventDefault();
+    feather.openExternal(a.dataset.href);
+  }
+};
+
+async function openModDetails(hit) {
+  const p = state.viewProfile;
+  if (!p) return;
+  moddHit = hit;
+
+  $('modd-title').textContent = hit.title;
+  $('modd-icon').src = hit.icon || '';
+  const cf = p.loader === 'forge';
+  const src = $('modd-source');
+  src.className = 'source-badge' + (cf ? ' cf' : '');
+  src.textContent = cf ? 'CurseForge' : 'Modrinth';
+  $('modd-meta').textContent = `by ${hit.author} · ${formatDownloads(hit.downloads)} downloads`;
+  $('modd-cats').innerHTML = '';
+  $('modd-gallery').classList.add('hidden');
+  const body = $('modd-body');
+  showSkeletons(body, 2);
+
+  const installBtn = $('modd-install');
+  const vanilla = p.loader === 'vanilla';
+  installBtn.disabled = vanilla;
+  installBtn.textContent = 'Install';
+  installBtn.classList.remove('installed');
+
+  modOverlay.classList.remove('hidden');
+
+  let d;
+  try {
+    d = await feather.getModDetails({ projectId: hit.id, source: cf ? 'curseforge' : 'modrinth' });
+  } catch (err) {
+    if (moddHit !== hit) return;
+    body.innerHTML = '';
+    body.appendChild(errorNote(cleanError(err), () => openModDetails(hit)));
+    return;
+  }
+  if (moddHit !== hit) return; // another mod was opened meanwhile
+
+  const meta = [];
+  if (d.author || hit.author) meta.push(`by ${d.author || hit.author}`);
+  meta.push(`${formatDownloads(d.downloads || hit.downloads)} downloads`);
+  if (d.followers) meta.push(`${formatDownloads(d.followers)} followers`);
+  if (d.updated) meta.push(`updated ${new Date(d.updated).toLocaleDateString()}`);
+  $('modd-meta').textContent = meta.join(' · ');
+
+  const cats = $('modd-cats');
+  cats.innerHTML = '';
+  for (const c of d.categories || []) {
+    const chip = document.createElement('span');
+    chip.textContent = c;
+    cats.appendChild(chip);
+  }
+
+  const gallery = $('modd-gallery');
+  gallery.innerHTML = '';
+  if (d.gallery && d.gallery.length) {
+    for (const url of d.gallery) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.loading = 'lazy';
+      img.onerror = () => img.remove();
+      gallery.appendChild(img);
+    }
+    gallery.classList.remove('hidden');
+  }
+
+  body.innerHTML = '';
+  const raw = d.source === 'curseforge' ? d.bodyHtml : mdToHtml(d.bodyMarkdown);
+  const frag = sanitizeToFragment(raw);
+  if (frag.childNodes.length) {
+    body.appendChild(frag);
+  } else {
+    const pEl = document.createElement('p');
+    pEl.className = 'empty-note';
+    pEl.textContent = d.summary || 'No description available.';
+    body.appendChild(pEl);
+  }
+
+  $('modd-external').onclick = () => d.url && feather.openExternal(d.url);
+}
+
+$('modd-install').onclick = () => moddHit && installFromButton($('modd-install'), moddHit, null);
+$('modd-versions').onclick = () => {
+  if (!moddHit) return;
+  closeModDetails();
+  openVersionDrawer(moddHit);
+};
 
 // ---------- versions drawer ----------
 const drawer = $('version-drawer');

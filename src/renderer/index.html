@@ -436,6 +436,33 @@
 
   <div id="toast-container" class="toast-container"></div>
 
+  <!-- Mod details modal (in-app mod page) -->
+  <div id="mod-overlay" class="modal-overlay hidden">
+    <div class="mod-modal">
+      <button id="modd-close" class="update-x" title="Close">&#x2715;</button>
+      <div class="mod-modal-head">
+        <img id="modd-icon" class="modd-icon" alt="" />
+        <div class="modd-head-info">
+          <div class="modd-title-row">
+            <h3 id="modd-title"></h3>
+            <span id="modd-source" class="source-badge"></span>
+          </div>
+          <div id="modd-meta" class="modd-meta"></div>
+          <div id="modd-cats" class="modd-cats"></div>
+        </div>
+        <div class="modd-actions">
+          <button id="modd-install" class="accent-button">Install</button>
+          <button id="modd-versions" class="ghost-button">Versions</button>
+          <button id="modd-external" class="ghost-button">Open Page</button>
+        </div>
+      </div>
+      <div class="mod-modal-scroll">
+        <div id="modd-gallery" class="modd-gallery hidden"></div>
+        <div id="modd-body" class="modd-body"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Crash card: shown when Minecraft exits with a non-zero code -->
   <div id="crash-card" class="update-card crash hidden">
     <div class="update-icon crash-icon">

@@ -1511,6 +1511,54 @@ ipcMain.handle('modrinth:install', async (_e, { projectId, profileId, versionId 
   return { installed };
 });
 
+// Full mod details for the in-app mod page (Adam's friend's idea — no more
+// opening modrinth.com just to read a description).
+ipcMain.handle('mods:details', async (_e, { projectId, source }) => {
+  if (source === 'curseforge') {
+    const mod = (await fetchJson(`${CF}/mods/${projectId}`)).data;
+    let bodyHtml = '';
+    try {
+      bodyHtml = (await fetchJson(`${CF}/mods/${projectId}/description`)).data || '';
+    } catch (e) {
+      console.warn('[details] cf description failed:', e.message);
+    }
+    return {
+      source: 'curseforge',
+      title: mod.name,
+      summary: mod.summary,
+      icon: mod.logo && mod.logo.thumbnailUrl,
+      author: (mod.authors && mod.authors[0] && mod.authors[0].name) || null,
+      downloads: mod.downloadCount,
+      updated: mod.dateReleased,
+      categories: (mod.categories || []).map((c) => c.name).slice(0, 8),
+      gallery: (mod.screenshots || []).map((s) => s.thumbnailUrl || s.url).filter(Boolean).slice(0, 12),
+      url: (mod.links && mod.links.websiteUrl) || `https://www.curseforge.com/minecraft/mc-mods/${mod.slug}`,
+      bodyHtml
+    };
+  }
+
+  const proj = await fetchJson(`${MODRINTH}/project/${projectId}`);
+  return {
+    source: 'modrinth',
+    title: proj.title,
+    summary: proj.description,
+    icon: proj.icon_url,
+    author: null, // Modrinth projects are team-owned; the search hit has the author
+    downloads: proj.downloads,
+    followers: proj.followers,
+    updated: proj.updated,
+    categories: (proj.categories || []).slice(0, 8),
+    gallery: (proj.gallery || []).map((g) => g.url).filter(Boolean).slice(0, 12),
+    url: `https://modrinth.com/mod/${proj.slug}`,
+    bodyMarkdown: proj.body || ''
+  };
+});
+
+ipcMain.handle('app:openExternal', (_e, url) => {
+  if (/^https:\/\//i.test(String(url))) shell.openExternal(String(url));
+  return true;
+});
+
 ipcMain.handle('modrinth:versions', async (_e, { projectId, profileId }) => {
   const data = await ensureProfiles();
   const profile = data.profiles.find((p) => p.id === profileId);
