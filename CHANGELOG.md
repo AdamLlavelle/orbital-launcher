@@ -2,6 +2,18 @@
 
 All notable changes to Orbital Launcher are documented here.
 
+## 0.6.2-beta — 2026-07-22
+
+### Added
+- The launcher now checks for **new Minecraft versions on startup**, so fresh
+  releases show up right away instead of after a delay.
+- The starter "newest release" profile now **tracks the latest version** — it's
+  named after its version and updates itself when a new Minecraft release lands.
+
+### Changed
+- The New Profile wizard now **defaults to the newest version** for the chosen
+  loader.
+
 ## 0.6.1-beta — 2026-07-12
 
 ### Added
