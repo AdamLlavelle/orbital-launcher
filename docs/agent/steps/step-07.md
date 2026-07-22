@@ -50,6 +50,12 @@ Phase B list — modpacks held back per Adam).
   ≤2MB png/jpg/gif/webp; included in .orbprofile export/import. Awaiting test.
 - Profile duplication, per-profile RAM/args/resolution
 - Multi-account switching (+ offline accounts)
+- [x] Auto-track newest MC version (2026-07-22): refreshVersionsOnLaunch
+  force-refreshes the Mojang manifest on startup (new releases like 26.3 show
+  up immediately, not after the 30-min TTL); the "newest release" premade
+  now has tracksLatest and is renamed+bumped to the newest version by
+  syncLatestProfile (adopts old "Latest Release" premades; keeps user
+  renames). Wizard defaults version to newest for the loader. LOCAL ONLY.
 - [x] In-app mod pages (friend's idea, built 2026-07-12 during the "pause"):
   click a mod card → modal with full description (whitelist-sanitized DOM,
   never innerHTML), gallery, stats, categories, Install/Versions/Open Page.
