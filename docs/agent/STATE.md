@@ -42,10 +42,11 @@ Commands). Adam tests himself — avoid computer-use unless clearly better.
   physics, gradient Play button, custom top bar. Reduced-motion respected.
 
 ## Shipped vs local
-- Latest GitHub release: **v0.6.1-beta** (shipped 2026-07-12): in-app mod
-  pages (click a card → sanitized description/gallery/stats) + "Installed"
-  markers in the mod browser. Adam lifted the repo freeze for this ship; the
-  freeze note below still applies to future work unless he says ship.
+- Latest GitHub release: **v0.6.2-beta** (shipped 2026-07-22): auto-track
+  newest MC version (launch-time manifest refresh, tracksLatest premade,
+  wizard defaults to newest). NOTE: 26.3 was only a SNAPSHOT on 07-22 (latest
+  release still 26.2); Adam chose releases-only, NO snapshot support added.
+- 0.6.1-beta (07-12): in-app mod pages + "Installed" markers in the browser.
 - 0.6.0-beta (07-11) had: launch in utilityProcess (no UI freeze),
   fast-verify launches, log window, profile import/export, update-all,
   profile images.
