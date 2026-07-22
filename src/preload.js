@@ -34,6 +34,7 @@ contextBridge.exposeInMainWorld('feather', {
   getForgeCategories: () => ipcRenderer.invoke('cf:categories'),
   listMods: (profileId, withMeta) => ipcRenderer.invoke('mods:list', profileId, withMeta),
   getInstalledProjects: (profileId) => ipcRenderer.invoke('mods:installedProjects', profileId),
+  onProfilesChanged: (cb) => ipcRenderer.on('profiles:changed', () => cb()),
   toggleMod: (opts) => ipcRenderer.invoke('mods:toggle', opts),
   checkModUpdates: (profileId) => ipcRenderer.invoke('mods:checkUpdates', profileId),
   updateAllMods: (profileId) => ipcRenderer.invoke('mods:updateAll', profileId),

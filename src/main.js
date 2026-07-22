@@ -190,10 +190,10 @@ const manifestCacheFile = () => path.join(app.getPath('userData'), 'manifest-cac
 const MANIFEST_TTL = 30 * 60 * 1000;
 
 let versionManifestCache = null;
-async function getVersionManifest() {
-  if (versionManifestCache) return versionManifestCache;
+async function getVersionManifest(force = false) {
+  if (versionManifestCache && !force) return versionManifestCache;
   const disk = readJson(manifestCacheFile(), null);
-  if (disk && disk.data && Date.now() - disk.at < MANIFEST_TTL) {
+  if (!force && disk && disk.data && Date.now() - disk.at < MANIFEST_TTL) {
     versionManifestCache = disk.data;
     return versionManifestCache;
   }
@@ -325,8 +325,36 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
   setupAutoUpdater();
+  refreshVersionsOnLaunch();
 });
 app.on('window-all-closed', () => app.quit());
+
+// On launch, refresh the version list straight from Mojang (bypassing the
+// cache) so brand-new Minecraft releases appear, and bump the auto-tracking
+// "newest release" profile to the new version if there is one.
+async function refreshVersionsOnLaunch() {
+  try {
+    await getVersionManifest(true);
+    allVersionsCache = null;
+    await fsp.unlink(allVersionsFile()).catch(() => {}); // advanced list refetches too
+    const data = readJson(profilesFile(), null);
+    if (data && Array.isArray(data.profiles) && await syncLatestProfile(data)) {
+      writeJson(profilesFile(), data);
+      notifyProfilesChanged();
+    }
+  } catch (err) {
+    console.warn('[versions] launch refresh failed:', err.message);
+  }
+}
+
+function notifyProfilesChanged() {
+  if (!win || win.isDestroyed()) return;
+  if (win.webContents.isLoading()) {
+    win.webContents.once('did-finish-load', () => send('profiles:changed', {}));
+  } else {
+    send('profiles:changed', {});
+  }
+}
 
 // ---------- auto-update (GitHub releases via electron-updater) ----------
 
@@ -1017,8 +1045,47 @@ async function ensureProfiles() {
     dirty = true;
   }
 
+  if (await syncLatestProfile(data)) dirty = true;
+
   if (dirty) writeJson(profilesFile(), data);
   return data;
+}
+
+// The "newest release" premade tracks the latest Minecraft version: it's
+// renamed and bumped to whatever the current newest release is. Also adopts
+// the old generic "Latest Release" premade from installs predating this.
+async function syncLatestProfile(data) {
+  let latest;
+  try {
+    latest = (await getVersionManifest()).latest.release;
+  } catch {
+    return false;
+  }
+  let changed = false;
+  let tracker = data.profiles.find((p) => p.tracksLatest);
+  if (!tracker) {
+    tracker = data.profiles.find((p) => p.premade && p.name === 'Latest Release');
+    if (tracker) {
+      tracker.tracksLatest = true;
+      changed = true;
+    }
+  }
+  if (!tracker) return changed;
+  // only rename while the profile is still auto-named — respect a user rename
+  const autoNamed = tracker.name === tracker.version || tracker.name === 'Latest Release';
+  if (tracker.version !== latest) {
+    tracker.version = latest;
+    changed = true;
+    if (autoNamed) {
+      tracker.name = latest;
+      tracker.description = 'Newest Minecraft release, on Fabric — updates automatically';
+    }
+  } else if (tracker.name === 'Latest Release') {
+    tracker.name = latest; // same version but still the old generic name
+    tracker.description = 'Newest Minecraft release, on Fabric — updates automatically';
+    changed = true;
+  }
+  return changed;
 }
 
 // Lunar-style starter profiles, created once on first run.
@@ -1029,7 +1096,7 @@ async function seedPremadeProfiles(data) {
   } catch {}
 
   const premades = [
-    { name: 'Latest Release', description: `The newest Minecraft (${latest}) on Fabric`, version: latest, loader: 'fabric' },
+    { name: latest, description: 'Newest Minecraft release, on Fabric — updates automatically', version: latest, loader: 'fabric', tracksLatest: true },
     { name: '1.16.5', description: 'The Nether Update on Fabric', version: '1.16.5', loader: 'fabric' },
     { name: '1.12.2', description: 'The modding classic on Forge — OptiFine included', version: '1.12.2', loader: 'forge', optifine: true },
     { name: '1.8.9', description: 'The PvP classic on Forge — OptiFine included', version: '1.8.9', loader: 'forge', optifine: true }
@@ -1043,7 +1110,8 @@ async function seedPremadeProfiles(data) {
       description: pm.description,
       version: pm.version,
       loader: pm.loader,
-      premade: true
+      premade: true,
+      ...(pm.tracksLatest ? { tracksLatest: true } : {})
     };
     data.profiles.push(profile);
     if (pm.optifine) {

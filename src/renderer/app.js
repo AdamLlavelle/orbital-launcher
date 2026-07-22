@@ -687,6 +687,7 @@ function renderVersionOptions() {
     list.innerHTML = '<p class="empty-note" style="padding:12px">No supported versions for this loader.</p>';
     return;
   }
+  if (!wizardVersion) wizardVersion = rows[0].id; // default to the newest version
   for (const v of rows) {
     const row = document.createElement('button');
     row.className = 'version-option' + (wizardVersion === v.id ? ' selected' : '');
@@ -1791,6 +1792,10 @@ async function boot() {
     showLogin();
   }
 }
+
+// Main refreshed the version list on launch (e.g. a new Minecraft release
+// bumped the auto-tracking profile) — reload profiles so the UI reflects it.
+feather.onProfilesChanged(() => { loadProfiles().catch(() => {}); });
 
 (async function init() {
   feather.getAppVersion().then((v) => { $('version-badge').textContent = `v${v}`; }).catch(() => {});
